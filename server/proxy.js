@@ -1,16 +1,20 @@
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
 import { createHash } from 'crypto';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import authRouter from './auth.js';
+import githubRouter from './github.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 5174;
+const PORT = process.env.PORT || 5174;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Assets directory
 const ASSETS_DIR = path.join(__dirname, '../assets');
@@ -68,8 +72,35 @@ const upload = multer({
   },
 });
 
-app.use(cors());
+// CORS configuration
+app.use(cors({
+  origin: isProduction ? 'https://vct-builder-app.onrender.com' : 'http://localhost:5173',
+  credentials: true,
+}));
+
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: isProduction,
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: isProduction ? 'none' : 'lax',
+  },
+}));
+
+// Trust proxy for secure cookies behind Render's load balancer
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
 app.use(express.json());
+
+// Mount auth and github routes
+app.use('/api/auth', authRouter);
+app.use('/api/github', githubRouter);
 
 // Serve static assets
 app.use('/assets', express.static(ASSETS_DIR));

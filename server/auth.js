@@ -1,0 +1,129 @@
+import express from 'express';
+import { Octokit } from 'octokit';
+
+const router = express.Router();
+
+// GitHub OAuth configuration
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const GITHUB_REPO_OWNER = process.env.GITHUB_REPO_OWNER || 'Canadian-Open-Property-Association';
+const GITHUB_REPO_NAME = process.env.GITHUB_REPO_NAME || 'governance';
+
+// Redirect to GitHub OAuth
+router.get('/login', (req, res) => {
+  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/callback`;
+  const scope = 'repo user:email';
+
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+
+  res.redirect(githubAuthUrl);
+});
+
+// GitHub OAuth callback
+router.get('/callback', async (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.redirect('/?error=no_code');
+  }
+
+  try {
+    // Exchange code for access token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: GITHUB_CLIENT_ID,
+        client_secret: GITHUB_CLIENT_SECRET,
+        code,
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+
+    if (tokenData.error) {
+      console.error('OAuth error:', tokenData);
+      return res.redirect('/?error=oauth_failed');
+    }
+
+    const accessToken = tokenData.access_token;
+
+    // Get user info
+    const octokit = new Octokit({ auth: accessToken });
+    const { data: user } = await octokit.rest.users.getAuthenticated();
+
+    // Check if user has access to the governance repo
+    try {
+      await octokit.rest.repos.get({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+      });
+    } catch (error) {
+      if (error.status === 404) {
+        return res.redirect('/?error=no_repo_access');
+      }
+      throw error;
+    }
+
+    // Store in session
+    req.session.githubToken = accessToken;
+    req.session.user = {
+      id: user.id,
+      login: user.login,
+      name: user.name,
+      avatar_url: user.avatar_url,
+      email: user.email,
+    };
+
+    res.redirect('/');
+  } catch (error) {
+    console.error('Auth callback error:', error);
+    res.redirect('/?error=auth_failed');
+  }
+});
+
+// Get current user
+router.get('/user', (req, res) => {
+  if (req.session.user) {
+    res.json({
+      authenticated: true,
+      user: req.session.user,
+    });
+  } else {
+    res.json({
+      authenticated: false,
+      user: null,
+    });
+  }
+});
+
+// Logout
+router.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to logout' });
+    }
+    res.json({ success: true });
+  });
+});
+
+// Middleware to check authentication
+export const requireAuth = (req, res, next) => {
+  if (!req.session.githubToken) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  next();
+};
+
+// Helper to get Octokit instance for current user
+export const getOctokit = (req) => {
+  if (!req.session.githubToken) {
+    throw new Error('Not authenticated');
+  }
+  return new Octokit({ auth: req.session.githubToken });
+};
+
+export default router;

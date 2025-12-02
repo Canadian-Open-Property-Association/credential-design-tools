@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useVctStore } from './store/vctStore';
+import { useAuthStore } from './store/authStore';
 import { getLocaleName } from './types/vct';
 import MetadataForm from './components/FormPanel/MetadataForm';
 import DisplayForm from './components/FormPanel/DisplayForm';
@@ -16,6 +17,12 @@ function App() {
   const [previewMode, setPreviewMode] = useState<'simple' | 'svg'>('simple');
   const currentProjectName = useVctStore((state) => state.currentProjectName);
   const currentVct = useVctStore((state) => state.currentVct);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  // Check authentication status on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   // Get available locales from the current VCT display configuration
   const availableLocales = currentVct.display.map((d) => d.locale);
