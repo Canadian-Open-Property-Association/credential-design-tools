@@ -163,23 +163,11 @@ export default function CardElementsForm({ displayIndex }: CardElementsFormProps
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h4 className="font-medium text-gray-800">Card Elements (COPA Standard)</h4>
-          <p className="text-xs text-gray-500 mt-1">
-            Configure the elements that appear on the front and back of the credential card.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setAssetPickerTarget(null);
-            setAssetPickerOpen(true);
-          }}
-          className="px-3 py-1.5 text-xs bg-slate-700 text-white rounded hover:bg-slate-800 flex items-center gap-1"
-        >
-          <span>📁</span> Asset Library
-        </button>
+      <div>
+        <h4 className="font-medium text-gray-800">Card Elements (COPA Standard)</h4>
+        <p className="text-xs text-gray-500 mt-1">
+          Configure the elements that appear on the front and back of the credential card.
+        </p>
       </div>
 
       {/* Front of Card Elements */}

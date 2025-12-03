@@ -13,5 +13,19 @@ export default defineConfig({
     port: 5173,
     host: true,
     allowedHosts: ['vct-builder-app.onrender.com'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5174',
+        changeOrigin: true,
+      },
+      '/assets': {
+        target: 'http://localhost:5174',
+        changeOrigin: true,
+      },
+      '/hash': {
+        target: 'http://localhost:5174',
+        changeOrigin: true,
+      },
+    },
   },
 })
