@@ -275,6 +275,22 @@ app.get('/hash', async (req, res) => {
   }
 });
 
+// Global error handler for Multer and other errors - must be before SPA fallback
+app.use((err, req, res, next) => {
+  console.error('Error:', err.message);
+
+  // Handle Multer errors
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ error: 'File too large. Maximum size is 5MB.' });
+  }
+  if (err.message && err.message.includes('Invalid file type')) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  // Generic error response
+  res.status(500).json({ error: err.message || 'Internal server error' });
+});
+
 // SPA fallback - serve index.html for all non-API routes in production
 if (isProduction) {
   const distPath = path.join(__dirname, '../dist');
