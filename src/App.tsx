@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useVctStore } from './store/vctStore';
-import { useAuthStore } from './store/authStore';
 import { getLocaleName } from './types/vct';
 import MetadataForm from './components/FormPanel/MetadataForm';
 import DisplayForm from './components/FormPanel/DisplayForm';
@@ -8,21 +8,17 @@ import ClaimsForm from './components/FormPanel/ClaimsForm';
 import JsonPreview from './components/JsonPanel/JsonPreview';
 import CredentialPreview from './components/PreviewPanel/CredentialPreview';
 import Toolbar from './components/Toolbar/Toolbar';
+import LoginPage from './pages/LoginPage';
+import AuthGuard from './components/Auth/AuthGuard';
 
 type FormSection = 'metadata' | 'display' | 'claims';
 
-function App() {
+function MainApp() {
   const [activeSection, setActiveSection] = useState<FormSection>('metadata');
   const [previewLocale, setPreviewLocale] = useState<string>('en-CA');
   const [previewMode, setPreviewMode] = useState<'simple' | 'svg'>('simple');
   const currentProjectName = useVctStore((state) => state.currentProjectName);
   const currentVct = useVctStore((state) => state.currentVct);
-  const checkAuth = useAuthStore((state) => state.checkAuth);
-
-  // Check authentication status on mount
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
 
   // Get available locales from the current VCT display configuration
   const availableLocales = currentVct.display.map((d) => d.locale);
@@ -136,6 +132,24 @@ function App() {
         </div>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/*"
+          element={
+            <AuthGuard>
+              <MainApp />
+            </AuthGuard>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

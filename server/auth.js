@@ -14,7 +14,9 @@ router.get('/login', (req, res) => {
   const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/callback`;
   const scope = 'repo user:email';
 
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`;
+  // Force GitHub to show the authorization screen every time (prompt=consent)
+  // This ensures users must enter their credentials on each login
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&prompt=consent`;
 
   res.redirect(githubAuthUrl);
 });
@@ -24,7 +26,7 @@ router.get('/callback', async (req, res) => {
   const { code } = req.query;
 
   if (!code) {
-    return res.redirect('/?error=no_code');
+    return res.redirect('/login?error=no_code');
   }
 
   try {
@@ -46,7 +48,7 @@ router.get('/callback', async (req, res) => {
 
     if (tokenData.error) {
       console.error('OAuth error:', tokenData);
-      return res.redirect('/?error=oauth_failed');
+      return res.redirect('/login?error=oauth_failed');
     }
 
     const accessToken = tokenData.access_token;
@@ -63,7 +65,7 @@ router.get('/callback', async (req, res) => {
       });
     } catch (error) {
       if (error.status === 404) {
-        return res.redirect('/?error=no_repo_access');
+        return res.redirect('/login?error=no_repo_access');
       }
       throw error;
     }
@@ -81,7 +83,7 @@ router.get('/callback', async (req, res) => {
     res.redirect('/');
   } catch (error) {
     console.error('Auth callback error:', error);
-    res.redirect('/?error=auth_failed');
+    res.redirect('/login?error=auth_failed');
   }
 });
 

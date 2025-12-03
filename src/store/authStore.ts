@@ -72,6 +72,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Reload to anonymous projects
       const { reloadUserProjects } = await import('./vctStore');
       reloadUserProjects();
+      // Redirect to login page
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout failed:', error);
     }
