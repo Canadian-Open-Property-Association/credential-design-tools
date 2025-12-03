@@ -7,6 +7,7 @@ import {
   detectDisplayMode,
   VCTSvgTemplate,
   METADATA_FIELD_OPTIONS,
+  FONT_FAMILY_OPTIONS,
 } from '../../types/vct';
 
 interface CredentialPreviewProps {
@@ -62,6 +63,7 @@ export default function CredentialPreview({ locale, mode, cardSide }: Credential
         style={{
           backgroundColor: simple.background_color || '#1E3A5F',
           color: simple.text_color || '#FFFFFF',
+          fontFamily: simple.font_family ? `"${simple.font_family}", sans-serif` : undefined,
           width: '320px',
           height: '200px',
           backgroundImage: simple.background_image?.uri
@@ -311,6 +313,7 @@ export default function CredentialPreview({ locale, mode, cardSide }: Credential
         style={{
           backgroundColor: simple?.background_color || '#1E3A5F',
           color: simple?.text_color || '#FFFFFF',
+          fontFamily: simple?.font_family ? `"${simple.font_family}", sans-serif` : undefined,
           width: '340px',
           height: '214px',
         }}
@@ -413,6 +416,7 @@ export default function CredentialPreview({ locale, mode, cardSide }: Credential
         style={{
           backgroundColor: simple?.background_color || '#1E3A5F',
           color: simple?.text_color || '#FFFFFF',
+          fontFamily: simple?.font_family ? `"${simple.font_family}", sans-serif` : undefined,
           width: '340px',
           height: '214px',
         }}

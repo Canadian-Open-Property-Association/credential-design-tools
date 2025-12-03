@@ -56,6 +56,9 @@ export default function JsonPreview() {
           if (d.rendering.simple.text_color) {
             simple.text_color = d.rendering.simple.text_color;
           }
+          if (d.rendering.simple.font_family) {
+            simple.font_family = d.rendering.simple.font_family;
+          }
 
           if (d.rendering.simple.logo?.uri) {
             simple.logo = {

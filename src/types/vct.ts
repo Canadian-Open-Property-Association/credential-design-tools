@@ -15,9 +15,22 @@ export interface VCTBackgroundImage {
 export interface VCTSimpleRendering {
   background_color?: string;
   text_color?: string;
+  font_family?: string;
   logo?: VCTLogo;
   background_image?: VCTBackgroundImage;
 }
+
+// Available font families for card rendering
+export const FONT_FAMILY_OPTIONS = [
+  { value: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans' },
+  { value: 'Inter', label: 'Inter' },
+  { value: 'Roboto', label: 'Roboto' },
+  { value: 'Open Sans', label: 'Open Sans' },
+  { value: 'Lato', label: 'Lato' },
+  { value: 'Montserrat', label: 'Montserrat' },
+  { value: 'Poppins', label: 'Poppins' },
+  { value: 'Source Sans Pro', label: 'Source Sans Pro' },
+] as const;
 
 export interface VCTSvgTemplateProperties {
   orientation?: 'portrait' | 'landscape';

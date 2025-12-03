@@ -9,6 +9,7 @@ import {
   isFrontBackFormat,
   isLegacyFormat,
   VCTSvgTemplate,
+  FONT_FAMILY_OPTIONS,
 } from '../../types/vct';
 import AssetLibrary from '../AssetLibrary/AssetLibrary';
 import CardElementsForm from './CardElementsForm';
@@ -395,6 +396,32 @@ export default function DisplayForm() {
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"
                 />
               </div>
+            </div>
+
+            {/* Font Family */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Font Family
+              </label>
+              <select
+                value={display.rendering?.simple?.font_family || ''}
+                onChange={(e) =>
+                  updateRendering({
+                    simple: {
+                      ...display.rendering?.simple,
+                      font_family: e.target.value || undefined,
+                    },
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+              >
+                <option value="">Default (System)</option>
+                {FONT_FAMILY_OPTIONS.map((font) => (
+                  <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Logo URL */}
