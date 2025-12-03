@@ -7,7 +7,6 @@ import {
   detectDisplayMode,
   VCTSvgTemplate,
   METADATA_FIELD_OPTIONS,
-  FONT_FAMILY_OPTIONS,
 } from '../../types/vct';
 
 interface CredentialPreviewProps {
