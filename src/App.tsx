@@ -18,6 +18,8 @@ function MainApp() {
   const [previewLocale, setPreviewLocale] = useState<string>('en-CA');
   const [previewMode, setPreviewMode] = useState<'simple' | 'svg'>('simple');
   const currentProjectName = useVctStore((state) => state.currentProjectName);
+  const updateProjectName = useVctStore((state) => state.updateProjectName);
+  const isDirty = useVctStore((state) => state.isDirty);
   const currentVct = useVctStore((state) => state.currentVct);
 
   // Get available locales from the current VCT display configuration
@@ -34,9 +36,15 @@ function MainApp() {
               Build Verifiable Credential Type files for COPA
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-slate-300 text-sm">Current Project</p>
-            <p className="font-medium">{currentProjectName}</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={currentProjectName}
+              onChange={(e) => updateProjectName(e.target.value)}
+              className="text-lg font-medium bg-transparent border-b border-transparent hover:border-slate-500 focus:border-white focus:outline-none px-2 py-1 text-right text-white placeholder-slate-400"
+              placeholder="Project name"
+            />
+            {isDirty && <span className="text-yellow-400 text-lg" title="Unsaved changes">*</span>}
           </div>
         </div>
       </header>

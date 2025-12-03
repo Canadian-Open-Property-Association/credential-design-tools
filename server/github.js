@@ -7,6 +7,81 @@ const router = express.Router();
 const GITHUB_REPO_OWNER = process.env.GITHUB_REPO_OWNER || 'Canadian-Open-Property-Association';
 const GITHUB_REPO_NAME = process.env.GITHUB_REPO_NAME || 'governance';
 const VCT_FOLDER_PATH = process.env.VCT_FOLDER_PATH || 'credentials/vct';
+const SCHEMA_FOLDER_PATH = process.env.SCHEMA_FOLDER_PATH || 'credentials/schemas';
+const BASE_URL = process.env.BASE_URL || 'https://openpropertyassociation.ca';
+
+// Get configuration (base URLs for VCT and Schema)
+router.get('/config', requireAuth, (req, res) => {
+  res.json({
+    vctBaseUrl: `${BASE_URL}/credentials/vct/`,
+    schemaBaseUrl: `${BASE_URL}/credentials/schemas/`,
+  });
+});
+
+// List schema files from the repository
+router.get('/schema-library', requireAuth, async (req, res) => {
+  try {
+    const octokit = getOctokit(req);
+
+    // Get contents of the schemas folder
+    const { data: contents } = await octokit.rest.repos.getContent({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      path: SCHEMA_FOLDER_PATH,
+    });
+
+    // Filter for JSON files only
+    const schemaFiles = contents
+      .filter((file) => file.type === 'file' && file.name.endsWith('.json'))
+      .map((file) => ({
+        name: file.name,
+        path: file.path,
+        sha: file.sha,
+        download_url: file.download_url,
+        uri: `${BASE_URL}/${file.path}`,
+      }));
+
+    res.json(schemaFiles);
+  } catch (error) {
+    if (error.status === 404) {
+      // Folder doesn't exist or is empty
+      return res.json([]);
+    }
+    console.error('Error fetching schema library:', error);
+    res.status(500).json({ error: 'Failed to fetch schema library' });
+  }
+});
+
+// Check if VCT filename is available
+router.get('/vct-available/:filename', requireAuth, async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const octokit = getOctokit(req);
+
+    // Ensure filename ends with .json
+    const finalFilename = filename.endsWith('.json') ? filename : `${filename}.json`;
+
+    try {
+      await octokit.rest.repos.getContent({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+        path: `${VCT_FOLDER_PATH}/${finalFilename}`,
+      });
+      // File exists, so it's not available
+      res.json({ available: false, filename: finalFilename });
+    } catch (error) {
+      if (error.status === 404) {
+        // File doesn't exist, so it's available
+        res.json({ available: true, filename: finalFilename });
+      } else {
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('Error checking VCT availability:', error);
+    res.status(500).json({ error: 'Failed to check VCT availability' });
+  }
+});
 
 // List VCT files from the repository
 router.get('/vct-library', requireAuth, async (req, res) => {

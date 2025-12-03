@@ -200,7 +200,7 @@ export default function DisplayForm() {
           {/* Localized Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Display Name ({getLocaleName(display.locale)})
+              Display Name
             </label>
             <input
               type="text"
@@ -214,7 +214,7 @@ export default function DisplayForm() {
           {/* Localized Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Display Description ({getLocaleName(display.locale)})
+              Display Description
             </label>
             <textarea
               value={display.description || ''}

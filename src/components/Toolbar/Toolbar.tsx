@@ -3,12 +3,14 @@ import { useVctStore } from '../../store/vctStore';
 import { useAuthStore } from '../../store/authStore';
 import LoginButton from '../Auth/LoginButton';
 import ImportModal from '../Modals/ImportModal';
+import NewProjectModal from '../Modals/NewProjectModal';
 import SaveToRepoModal from '../Library/SaveToRepoModal';
 
 export default function Toolbar() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLocalLibrary, setShowLocalLibrary] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showSaveToRepo, setShowSaveToRepo] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -22,8 +24,6 @@ export default function Toolbar() {
   const saveProject = useVctStore((state) => state.saveProject);
   const loadProject = useVctStore((state) => state.loadProject);
   const deleteProject = useVctStore((state) => state.deleteProject);
-  const exportVct = useVctStore((state) => state.exportVct);
-  const updateProjectName = useVctStore((state) => state.updateProjectName);
 
   const handleSave = () => {
     setProjectName(currentProjectName);
@@ -37,27 +37,22 @@ export default function Toolbar() {
     }
   };
 
-  const handleExport = () => {
-    const json = exportVct();
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${currentProjectName.toLowerCase().replace(/\s+/g, '-')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const handleNew = () => {
     if (isDirty) {
       if (confirm('You have unsaved changes. Are you sure you want to create a new project?')) {
-        newProject();
+        setShowNewProjectModal(true);
       }
     } else {
-      newProject();
+      setShowNewProjectModal(true);
     }
+  };
+
+  const handleStartFresh = () => {
+    newProject();
+  };
+
+  const handleImport = () => {
+    setShowImportModal(true);
   };
 
   return (
@@ -84,19 +79,6 @@ export default function Toolbar() {
           </svg>
           Local Library
         </button>
-        <div className="w-px h-6 bg-gray-300 mx-2" />
-        <button
-          onClick={() => setShowImportModal(true)}
-          className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-1"
-        >
-          <span>📥</span> Import JSON
-        </button>
-        <button
-          onClick={handleExport}
-          className="px-3 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-md flex items-center gap-1"
-        >
-          <span>📤</span> Export JSON
-        </button>
 
         {/* GitHub Integration Section */}
         {isAuthenticated && (
@@ -114,21 +96,20 @@ export default function Toolbar() {
           </>
         )}
 
-        {/* Project Title */}
-        <div className="flex-1 flex justify-center">
-          <input
-            type="text"
-            value={currentProjectName}
-            onChange={(e) => updateProjectName(e.target.value)}
-            className="text-sm font-medium text-gray-700 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none px-2 py-1 text-center min-w-[150px]"
-            placeholder="Project name"
-          />
-          {isDirty && <span className="text-gray-400 ml-1">*</span>}
-        </div>
+        {/* Spacer */}
+        <div className="flex-1" />
 
         {/* Login Button */}
         <LoginButton />
       </div>
+
+      {/* New Project Modal */}
+      <NewProjectModal
+        isOpen={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+        onStartFresh={handleStartFresh}
+        onImport={handleImport}
+      />
 
       {/* Save Dialog */}
       {showSaveDialog && (
