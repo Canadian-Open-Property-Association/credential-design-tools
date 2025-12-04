@@ -1,11 +1,21 @@
+import { useMemo } from 'react';
 import { useSchemaStore } from '../../../store/schemaStore';
+import { toJsonSchema } from '../../../types/schema';
 
 export default function SchemaJsonPreview() {
-  const exportSchema = useSchemaStore((state) => state.exportSchema);
+  // Subscribe to metadata and properties so component re-renders when they change
+  const metadata = useSchemaStore((state) => state.metadata);
+  const properties = useSchemaStore((state) => state.properties);
+
+  // Generate JSON Schema whenever metadata or properties change
+  const schemaJson = useMemo(() => {
+    const schema = toJsonSchema(metadata, properties);
+    return JSON.stringify(schema, null, 2);
+  }, [metadata, properties]);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(exportSchema());
+      await navigator.clipboard.writeText(schemaJson);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
@@ -26,7 +36,7 @@ export default function SchemaJsonPreview() {
 
       {/* JSON Content */}
       <pre className="p-4 text-sm font-mono text-gray-100 whitespace-pre-wrap overflow-x-auto">
-        {exportSchema()}
+        {schemaJson}
       </pre>
     </div>
   );

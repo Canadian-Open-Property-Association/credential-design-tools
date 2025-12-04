@@ -574,7 +574,7 @@ app.delete('/api/schema-projects/:id', requireProjectAuth, (req, res) => {
 // Governance docs configuration
 const GOVERNANCE_REPO_OWNER = process.env.GITHUB_REPO_OWNER || 'Canadian-Open-Property-Association';
 const GOVERNANCE_REPO_NAME = process.env.GITHUB_REPO_NAME || 'verifiable-credentials';
-const GOVERNANCE_DOCS_PATH = 'site/governance';
+const GOVERNANCE_DOCS_PATH = 'credentials/governance-docs';
 const GOVERNANCE_BASE_URL = 'https://openpropertyassociation.ca/governance';
 
 // Fetch governance docs from GitHub (public, no auth required)
@@ -588,6 +588,7 @@ app.get('/api/governance-docs', async (req, res) => {
         'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'credential-design-tools',
       },
+      redirect: 'follow', // Follow redirects automatically
     });
 
     if (!response.ok) {
@@ -595,6 +596,12 @@ app.get('/api/governance-docs', async (req, res) => {
     }
 
     const files = await response.json();
+
+    // Handle case where response is not an array (e.g., error or redirect message)
+    if (!Array.isArray(files)) {
+      console.error('Unexpected GitHub API response:', files);
+      throw new Error('Unexpected response from GitHub API');
+    }
 
     // Filter for markdown files and transform to GovernanceDoc format
     const docs = files
