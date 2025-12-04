@@ -80,7 +80,7 @@ router.get('/callback', async (req, res) => {
       email: user.email,
     };
 
-    res.redirect('/');
+    res.redirect('/apps');
   } catch (error) {
     console.error('Auth callback error:', error);
     res.redirect('/login?error=auth_failed');
