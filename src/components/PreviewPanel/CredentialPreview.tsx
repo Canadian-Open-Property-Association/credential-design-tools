@@ -79,10 +79,54 @@ function AutoSizeText({
   );
 }
 
+// Gridlines overlay component for COPA card zones
+function GridlinesOverlay() {
+  const zones = [
+    { name: 'top_left', top: 0, left: 0, width: '50%', height: '40px', color: 'rgba(59, 130, 246, 0.3)' },
+    { name: 'top_right', top: 0, right: 0, width: '50%', height: '40px', color: 'rgba(168, 85, 247, 0.3)' },
+    { name: 'center', top: '40px', left: 0, width: '100%', height: 'calc(100% - 85px - 40px)', color: 'rgba(34, 197, 94, 0.3)' },
+    { name: 'center_below', bottom: '45px', left: 0, width: '100%', height: '40px', color: 'rgba(251, 191, 36, 0.3)' },
+    { name: 'bottom_left', bottom: 0, left: 0, width: '50%', height: '45px', color: 'rgba(239, 68, 68, 0.3)' },
+    { name: 'bottom_right', bottom: 0, right: 0, width: '50%', height: '45px', color: 'rgba(236, 72, 153, 0.3)' },
+  ];
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-10">
+      {zones.map((zone) => (
+        <div
+          key={zone.name}
+          className="absolute flex items-center justify-center border border-dashed"
+          style={{
+            top: zone.top,
+            left: zone.left,
+            right: zone.right,
+            bottom: zone.bottom,
+            width: zone.width,
+            height: zone.height,
+            backgroundColor: zone.color,
+            borderColor: zone.color.replace('0.3', '0.8'),
+          }}
+        >
+          <span
+            className="text-[9px] font-mono font-semibold px-1 py-0.5 rounded"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              color: '#fff',
+            }}
+          >
+            {zone.name}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function CredentialPreview({ locale, cardSide }: CredentialPreviewProps) {
   const currentVct = useVctStore((state) => state.currentVct);
   const sampleData = useVctStore((state) => state.sampleData);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [showGridlines, setShowGridlines] = useState(false);
 
   // Sync flip state when cardSide prop changes from parent buttons
   useEffect(() => {
@@ -176,7 +220,10 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
             {frontTemplate?.uri ? (
               renderSvgTemplate(frontTemplate, 'front')
             ) : (
-              renderSimpleCardFront()
+              <div className="relative">
+                {renderSimpleCardFront()}
+                {showGridlines && <GridlinesOverlay />}
+              </div>
             )}
           </div>
 
@@ -191,15 +238,30 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
             {backTemplate?.uri ? (
               renderSvgTemplate(backTemplate, 'back')
             ) : (
-              renderSimpleCardBack()
+              <div className="relative">
+                {renderSimpleCardBack()}
+                {showGridlines && <GridlinesOverlay />}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Flip Indicator */}
-        <p className="mt-4 text-xs text-gray-500 text-center">
-          Click card to flip • Showing {currentSide}
-        </p>
+        {/* Controls */}
+        <div className="mt-4 flex items-center justify-center gap-4">
+          <p className="text-xs text-gray-500">
+            Click card to flip • Showing {currentSide}
+          </p>
+          <button
+            onClick={() => setShowGridlines(!showGridlines)}
+            className={`text-xs px-2 py-1 rounded border transition-colors ${
+              showGridlines
+                ? 'bg-blue-100 border-blue-300 text-blue-700'
+                : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {showGridlines ? '⊞ Hide Zones' : '⊞ Show Zones'}
+          </button>
+        </div>
       </div>
     );
   };
