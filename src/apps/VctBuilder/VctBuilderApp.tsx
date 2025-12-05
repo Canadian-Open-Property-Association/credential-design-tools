@@ -9,11 +9,18 @@ import CredentialPreview from '../../components/PreviewPanel/CredentialPreview';
 import Toolbar from '../../components/Toolbar/Toolbar';
 
 type FormSection = 'metadata' | 'display' | 'claims';
+type MobilePanel = 'form' | 'json' | 'preview';
 
 export default function VctBuilderApp() {
   const [activeSection, setActiveSection] = useState<FormSection>('metadata');
   const [previewLocale, setPreviewLocale] = useState<string>('en-CA');
   const [cardSide, setCardSide] = useState<'front' | 'back' | undefined>(undefined);
+
+  // Panel visibility state for responsive layout
+  const [showFormPanel, setShowFormPanel] = useState(true);
+  const [showJsonPanel, setShowJsonPanel] = useState(true);
+  const [mobileActivePanel, setMobileActivePanel] = useState<MobilePanel>('preview');
+
   const currentProjectName = useVctStore((state) => state.currentProjectName);
   const updateProjectName = useVctStore((state) => state.updateProjectName);
   const isDirty = useVctStore((state) => state.isDirty);
@@ -49,64 +56,144 @@ export default function VctBuilderApp() {
       {/* Toolbar */}
       <Toolbar />
 
-      {/* Main Content - Three Panel Layout */}
+      {/* Panel Toggle Bar - visible on md+ screens */}
+      <div className="hidden md:flex bg-gray-200 px-4 py-1 gap-2 border-b border-gray-300">
+        <button
+          onClick={() => setShowFormPanel(!showFormPanel)}
+          className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+            showFormPanel
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          {showFormPanel ? '◂ Form' : '▸ Form'}
+        </button>
+        <button
+          onClick={() => setShowJsonPanel(!showJsonPanel)}
+          className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+            showJsonPanel
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          {showJsonPanel ? '◂ JSON' : '▸ JSON'}
+        </button>
+      </div>
+
+      {/* Mobile Panel Tabs - visible on small screens only */}
+      <div className="md:hidden flex bg-gray-100 border-b border-gray-300">
+        <button
+          onClick={() => setMobileActivePanel('form')}
+          className={`flex-1 px-4 py-2 text-sm font-medium ${
+            mobileActivePanel === 'form'
+              ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-600'
+          }`}
+        >
+          Form
+        </button>
+        <button
+          onClick={() => setMobileActivePanel('json')}
+          className={`flex-1 px-4 py-2 text-sm font-medium ${
+            mobileActivePanel === 'json'
+              ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-600'
+          }`}
+        >
+          JSON
+        </button>
+        <button
+          onClick={() => setMobileActivePanel('preview')}
+          className={`flex-1 px-4 py-2 text-sm font-medium ${
+            mobileActivePanel === 'preview'
+              ? 'bg-white text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-600'
+          }`}
+        >
+          Preview
+        </button>
+      </div>
+
+      {/* Main Content - Responsive Panel Layout */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Panel - Form Input */}
-        <div className="w-1/3 border-r border-gray-300 bg-white overflow-y-auto">
-          {/* Section Tabs */}
-          <div className="flex border-b border-gray-200 sticky top-0 bg-white z-10">
-            <button
-              onClick={() => setActiveSection('metadata')}
-              className={`flex-1 px-4 py-3 text-sm font-medium ${
-                activeSection === 'metadata'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              }`}
-            >
-              Metadata
-            </button>
-            <button
-              onClick={() => setActiveSection('display')}
-              className={`flex-1 px-4 py-3 text-sm font-medium ${
-                activeSection === 'display'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              }`}
-            >
-              Display
-            </button>
-            <button
-              onClick={() => setActiveSection('claims')}
-              className={`flex-1 px-4 py-3 text-sm font-medium ${
-                activeSection === 'claims'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              }`}
-            >
-              Claims
-            </button>
-          </div>
+        {((mobileActivePanel === 'form') || showFormPanel) && (
+          <div
+            className={`
+              flex-col border-r border-gray-300 bg-white overflow-y-auto transition-all duration-300
+              ${mobileActivePanel === 'form' ? 'flex w-full' : 'hidden'}
+              ${showFormPanel ? 'md:flex md:w-80 lg:w-96' : 'md:hidden'}
+            `}
+          >
+            {/* Section Tabs */}
+            <div className="flex border-b border-gray-200 sticky top-0 bg-white z-10 flex-shrink-0">
+              <button
+                onClick={() => setActiveSection('metadata')}
+                className={`flex-1 px-4 py-3 text-sm font-medium ${
+                  activeSection === 'metadata'
+                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                Metadata
+              </button>
+              <button
+                onClick={() => setActiveSection('display')}
+                className={`flex-1 px-4 py-3 text-sm font-medium ${
+                  activeSection === 'display'
+                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                Display
+              </button>
+              <button
+                onClick={() => setActiveSection('claims')}
+                className={`flex-1 px-4 py-3 text-sm font-medium ${
+                  activeSection === 'claims'
+                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                Claims
+              </button>
+            </div>
 
-          {/* Form Content */}
-          <div className="p-4">
-            {activeSection === 'metadata' && <MetadataForm />}
-            {activeSection === 'display' && <DisplayForm />}
-            {activeSection === 'claims' && <ClaimsForm />}
+            {/* Form Content */}
+            <div className="p-4 flex-1 overflow-y-auto">
+              {activeSection === 'metadata' && <MetadataForm />}
+              {activeSection === 'display' && <DisplayForm />}
+              {activeSection === 'claims' && <ClaimsForm />}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Middle Panel - JSON Preview */}
-        <div className="w-1/3 border-r border-gray-300 bg-gray-900 overflow-y-auto">
-          <div className="sticky top-0 bg-gray-800 px-4 py-2 border-b border-gray-700">
-            <h2 className="text-white font-medium">VCT JSON</h2>
+        {((mobileActivePanel === 'json') || showJsonPanel) && (
+          <div
+            className={`
+              flex-col border-r border-gray-300 bg-gray-900 overflow-y-auto transition-all duration-300
+              ${mobileActivePanel === 'json' ? 'flex w-full' : 'hidden'}
+              ${showJsonPanel ? 'md:flex md:w-80 lg:w-96' : 'md:hidden'}
+            `}
+          >
+            <div className="sticky top-0 bg-gray-800 px-4 py-2 border-b border-gray-700 flex-shrink-0">
+              <h2 className="text-white font-medium">VCT JSON</h2>
+            </div>
+            <JsonPreview />
           </div>
-          <JsonPreview />
-        </div>
+        )}
 
         {/* Right Panel - Credential Preview */}
-        <div className="w-1/3 bg-gray-50 overflow-y-auto">
+        <div
+          className={`
+            flex-col flex-1 bg-gray-50 overflow-y-auto transition-all duration-300
+            ${mobileActivePanel === 'preview' ? 'flex w-full' : 'hidden'}
+            md:flex
+          `}
+        >
           {/* Preview Controls */}
-          <div className="sticky top-0 bg-white px-4 py-2 border-b border-gray-200 flex items-center gap-4">
+          <div className="sticky top-0 bg-white px-4 py-2 border-b border-gray-200 flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Language:</label>
               <select
