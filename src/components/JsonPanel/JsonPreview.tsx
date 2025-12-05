@@ -1,6 +1,31 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useVctStore } from '../../store/vctStore';
 import { isFrontBackFormat, VCTSvgTemplate, VCT } from '../../types/vct';
+
+// Simple JSON syntax highlighter - returns HTML with colored spans
+function highlightJson(json: string): string {
+  // Escape HTML entities first
+  const escaped = json
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Apply syntax highlighting with regex
+  return escaped
+    // Strings (property names and values) - cyan for keys, green for values
+    .replace(/"([^"\\]*(\\.[^"\\]*)*)"\s*:/g, '<span class="text-cyan-400">"$1"</span>:')
+    .replace(/:\s*"([^"\\]*(\\.[^"\\]*)*)"/g, ': <span class="text-green-400">"$1"</span>')
+    // Standalone strings (in arrays)
+    .replace(/(?<=[\[,]\s*)"([^"\\]*(\\.[^"\\]*)*)"/g, '<span class="text-green-400">"$1"</span>')
+    // Numbers - orange
+    .replace(/:\s*(-?\d+\.?\d*)/g, ': <span class="text-orange-400">$1</span>')
+    .replace(/(?<=[\[,]\s*)(-?\d+\.?\d*)(?=\s*[,\]])/g, '<span class="text-orange-400">$1</span>')
+    // Booleans and null - purple
+    .replace(/:\s*(true|false|null)/g, ': <span class="text-purple-400">$1</span>')
+    .replace(/(?<=[\[,]\s*)(true|false|null)(?=\s*[,\]])/g, '<span class="text-purple-400">$1</span>')
+    // Brackets and braces - gray
+    .replace(/([{}[\]])/g, '<span class="text-gray-500">$1</span>');
+}
 
 export default function JsonPreview() {
   const currentVct = useVctStore((state) => state.currentVct);
@@ -321,6 +346,20 @@ export default function JsonPreview() {
 
   const hasUnsavedChanges = localJson !== storeJsonString && !parseError;
 
+  // Memoize the highlighted HTML to avoid re-computing on every render
+  const highlightedHtml = useMemo(() => highlightJson(localJson), [localJson]);
+
+  // Sync scroll between textarea and highlighted pre
+  const preRef = useRef<HTMLPreElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    if (textareaRef.current && preRef.current) {
+      preRef.current.scrollTop = textareaRef.current.scrollTop;
+      preRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    }
+  }, []);
+
   return (
     <div className="h-full flex flex-col">
       {/* Action buttons */}
@@ -361,17 +400,31 @@ export default function JsonPreview() {
         </div>
       )}
 
-      {/* JSON editor */}
-      <div className="flex-1 overflow-auto">
+      {/* JSON editor with syntax highlighting overlay */}
+      <div
+        ref={containerRef}
+        className={`flex-1 overflow-hidden relative ${
+          parseError ? 'border-l-2 border-red-500' : ''
+        } ${hasUnsavedChanges ? 'border-l-2 border-yellow-500' : ''}`}
+      >
+        {/* Syntax-highlighted layer (behind) */}
+        <pre
+          ref={preRef}
+          className="absolute inset-0 p-4 m-0 font-mono text-xs leading-relaxed overflow-auto pointer-events-none whitespace-pre-wrap break-words"
+          style={{ tabSize: 2 }}
+          aria-hidden="true"
+          dangerouslySetInnerHTML={{ __html: highlightedHtml + '\n' }}
+        />
+        {/* Editable textarea (in front, transparent) */}
         <textarea
           ref={textareaRef}
           value={localJson}
           onChange={(e) => handleJsonChange(e.target.value)}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          className={`w-full h-full p-4 bg-transparent text-gray-100 font-mono text-xs leading-relaxed resize-none focus:outline-none ${
-            parseError ? 'border-l-2 border-red-500' : ''
-          } ${hasUnsavedChanges ? 'border-l-2 border-yellow-500' : ''}`}
+          onScroll={handleScroll}
+          className="absolute inset-0 w-full h-full p-4 bg-transparent text-transparent caret-white font-mono text-xs leading-relaxed resize-none focus:outline-none"
+          style={{ tabSize: 2 }}
           spellCheck={false}
         />
       </div>
