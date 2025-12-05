@@ -230,8 +230,8 @@ export default function VctBuilderApp() {
           </div>
         )}
 
-        {/* Resizable divider between Form and JSON panels */}
-        {showFormPanel && showJsonPanel && (
+        {/* Resizable divider after Form panel - shows when Form is visible */}
+        {showFormPanel && (
           <ResizableDivider onDrag={handleFormDividerDrag} />
         )}
 
@@ -252,7 +252,7 @@ export default function VctBuilderApp() {
           </div>
         )}
 
-        {/* Resizable divider between JSON and Preview panels */}
+        {/* Resizable divider after JSON panel - shows when JSON is visible */}
         {showJsonPanel && (
           <ResizableDivider onDrag={handleJsonDividerDrag} />
         )}
