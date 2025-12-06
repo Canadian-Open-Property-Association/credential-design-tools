@@ -8,6 +8,7 @@ interface LogsTableProps {
 function formatTimestamp(timestamp: string): string {
   const date = new Date(timestamp);
   return date.toLocaleString('en-US', {
+    timeZone: 'America/Toronto',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
