@@ -29,10 +29,11 @@ export default function VocabularyManager() {
 
   // Load default vocabulary on mount if none loaded
   useEffect(() => {
-    if (vocabularies.length === 0 && !isLoading) {
+    // Only load if no vocabularies, not currently loading, and no error
+    if (vocabularies.length === 0 && !isLoading && !error) {
       loadDefaultVocabulary();
     }
-  }, [vocabularies.length, isLoading]);
+  }, [vocabularies.length, isLoading, error]);
 
   // Update schema metadata when vocabulary changes
   useEffect(() => {

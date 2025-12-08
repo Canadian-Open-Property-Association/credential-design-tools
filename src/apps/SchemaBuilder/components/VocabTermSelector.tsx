@@ -24,9 +24,14 @@ export default function VocabTermSelector({
   showComplexTypes = true,
   disabled = false,
 }: VocabTermSelectorProps) {
-  const vocab = useVocabularyStore((state) => state.getSelectedVocab());
-  const terms = useVocabularyStore((state) => state.getAllTerms());
-  const complexTypes = useVocabularyStore((state) => state.getAllComplexTypes());
+  // Get store state directly, not via getter functions (which create new references)
+  const vocabularies = useVocabularyStore((state) => state.vocabularies);
+  const selectedVocabId = useVocabularyStore((state) => state.selectedVocabId);
+
+  // Derive values from state
+  const vocab = vocabularies.find((v) => v.id === selectedVocabId) || null;
+  const terms = vocab?.terms || [];
+  const complexTypes = vocab?.complexTypes || [];
 
   if (!vocab) {
     return (
