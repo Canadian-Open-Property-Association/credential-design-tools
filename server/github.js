@@ -8,15 +8,17 @@ const GITHUB_REPO_OWNER = process.env.GITHUB_REPO_OWNER || 'Canadian-Open-Proper
 const GITHUB_REPO_NAME = process.env.GITHUB_REPO_NAME || 'governance';
 const VCT_FOLDER_PATH = process.env.VCT_FOLDER_PATH || 'credentials/branding';
 const SCHEMA_FOLDER_PATH = process.env.SCHEMA_FOLDER_PATH || 'credentials/schemas';
+const CONTEXT_FOLDER_PATH = process.env.CONTEXT_FOLDER_PATH || 'credentials/contexts';
 const BASE_URL = process.env.BASE_URL || 'https://openpropertyassociation.ca';
 // Base branch for PRs - if set, use this instead of repo's default branch
 const GITHUB_BASE_BRANCH = process.env.GITHUB_BASE_BRANCH || null;
 
-// Get configuration (base URLs for VCT and Schema)
+// Get configuration (base URLs for VCT, Schema, and Context)
 router.get('/config', requireAuth, (req, res) => {
   res.json({
     vctBaseUrl: `${BASE_URL}/credentials/branding/`,
     schemaBaseUrl: `${BASE_URL}/credentials/schemas/`,
+    contextBaseUrl: `${BASE_URL}/credentials/contexts/`,
   });
 });
 
@@ -149,6 +151,109 @@ router.get('/vct/:filename', requireAuth, async (req, res) => {
     }
     console.error('Error fetching VCT file:', error);
     res.status(500).json({ error: 'Failed to fetch VCT file' });
+  }
+});
+
+// Create a new Schema file (creates branch + PR)
+// Supports both JSON Schema (.json) and JSON-LD Context (.jsonld) modes
+router.post('/schema', requireAuth, async (req, res) => {
+  try {
+    const { filename, content, title, description, mode } = req.body;
+
+    if (!filename || !content) {
+      return res.status(400).json({ error: 'Filename and content are required' });
+    }
+
+    // Determine folder and file extension based on mode
+    const isJsonLdMode = mode === 'jsonld-context';
+    const extension = isJsonLdMode ? '.jsonld' : '.json';
+    const folderPath = isJsonLdMode ? CONTEXT_FOLDER_PATH : SCHEMA_FOLDER_PATH;
+    const typeLabel = isJsonLdMode ? 'JSON-LD Context' : 'JSON Schema';
+    const branchPrefix = isJsonLdMode ? 'context' : 'schema';
+
+    // Ensure filename ends with correct extension
+    let finalFilename = filename;
+    if (isJsonLdMode && !filename.endsWith('.jsonld')) {
+      finalFilename = filename.replace(/\.json$/, '') + '.jsonld';
+    } else if (!isJsonLdMode && !filename.endsWith('.json')) {
+      finalFilename = filename + '.json';
+    }
+
+    const octokit = getOctokit(req);
+    const user = req.session.user;
+
+    // Determine the base branch for the PR
+    let baseBranch = GITHUB_BASE_BRANCH;
+    if (!baseBranch) {
+      const { data: repo } = await octokit.rest.repos.get({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+      });
+      baseBranch = repo.default_branch;
+    }
+
+    // Get the latest commit SHA of the base branch
+    const { data: ref } = await octokit.rest.git.getRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `heads/${baseBranch}`,
+    });
+    const baseSha = ref.object.sha;
+
+    // Create a new branch
+    const timestamp = Date.now();
+    const branchName = `${branchPrefix}/add-${finalFilename.replace(/\.(json|jsonld)$/, '')}-${timestamp}`;
+
+    await octokit.rest.git.createRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `refs/heads/${branchName}`,
+      sha: baseSha,
+    });
+
+    // Create or update the file in the new branch
+    const filePath = `${folderPath}/${finalFilename}`;
+    const fileContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+    const encodedContent = Buffer.from(fileContent).toString('base64');
+
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      path: filePath,
+      message: `Add ${typeLabel}: ${finalFilename}`,
+      content: encodedContent,
+      branch: branchName,
+    });
+
+    // Create a pull request
+    const prTitle = title || `Add ${typeLabel}: ${finalFilename}`;
+    const prBody = description || `This PR adds a new ${typeLabel} file: \`${finalFilename}\`
+
+Created by @${user.login} using the [COPA Apps](https://apps.openpropertyassociation.ca).`;
+
+    const { data: pr } = await octokit.rest.pulls.create({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      title: prTitle,
+      body: prBody,
+      head: branchName,
+      base: baseBranch,
+    });
+
+    res.json({
+      success: true,
+      pr: {
+        number: pr.number,
+        url: pr.html_url,
+        title: pr.title,
+      },
+      branch: branchName,
+      file: filePath,
+      uri: `${BASE_URL}/${filePath}`,
+    });
+  } catch (error) {
+    console.error('Error creating Schema PR:', error);
+    res.status(500).json({ error: error.message || 'Failed to create Schema pull request' });
   }
 });
 
