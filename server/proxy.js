@@ -104,7 +104,7 @@ const upload = multer({
 // CORS configuration
 app.use(cors({
   origin: isProduction
-    ? ['https://credential-design-tools.openpropertyassociation.ca', 'https://vct-builder-app.onrender.com']
+    ? ['https://apps.openpropertyassociation.ca']
     : 'http://localhost:5173',
   credentials: true,
 }));
@@ -836,7 +836,7 @@ app.get('/api/governance-docs', async (req, res) => {
     const response = await fetch(apiUrl, {
       headers: {
         'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'credential-design-tools',
+        'User-Agent': 'copa-apps',
       },
       redirect: 'follow', // Follow redirects automatically
     });

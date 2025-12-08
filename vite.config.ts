@@ -13,8 +13,7 @@ export default defineConfig({
     port: 5173,
     host: true,
     allowedHosts: [
-      'vct-builder-app.onrender.com',
-      'credential-design-tools.openpropertyassociation.ca',
+      'apps.openpropertyassociation.ca',
     ],
     proxy: {
       '/api': {

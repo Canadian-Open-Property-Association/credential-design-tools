@@ -215,7 +215,7 @@ router.post('/vct', requireAuth, async (req, res) => {
     const prTitle = title || `Add VCT branding file: ${finalFilename}`;
     const prBody = description || `This PR adds a new VCT branding file: \`${finalFilename}\`
 
-Created by @${user.login} using the [Credential Design Tools](https://credential-design-tools.onrender.com).`;
+Created by @${user.login} using the [COPA Apps](https://apps.openpropertyassociation.ca).`;
 
     const { data: pr } = await octokit.rest.pulls.create({
       owner: GITHUB_REPO_OWNER,
