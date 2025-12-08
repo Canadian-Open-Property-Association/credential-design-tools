@@ -316,9 +316,21 @@ export default function ZoneEditor({ onClose }: ZoneEditorProps) {
         if (newZonePosition.width >= MIN_ZONE_SIZE && newZonePosition.height >= MIN_ZONE_SIZE) {
           // Check for overlaps
           if (!checkOverlap(newZonePosition)) {
+            // Find the next available zone number
+            const existingNumbers = zones
+              .map((z) => {
+                const match = z.name.match(/^Zone (\d+)$/);
+                return match ? parseInt(match[1], 10) : 0;
+              })
+              .filter((n) => n > 0);
+            let nextNumber = 1;
+            while (existingNumbers.includes(nextNumber)) {
+              nextNumber++;
+            }
+
             const newZone: Zone = {
               id: crypto.randomUUID(),
-              name: `Zone ${zones.length + 1}`,
+              name: `Zone ${nextNumber}`,
               position: newZonePosition,
             };
             addZone(activeFace, newZone);
