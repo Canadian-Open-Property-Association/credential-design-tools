@@ -200,6 +200,77 @@
           ]
         }
       ]
+    },
+    {
+      "id": "city-of-vancouver",
+      "name": "City of Vancouver",
+      "description": "City of Vancouver Business Licences Division - issues rental property business licences as verifiable credentials",
+      "website": "https://vancouver.ca",
+      "regionsCovered": ["BC"],
+      "dataTypes": [
+        {
+          "id": "cov-rental-licence",
+          "name": "Rental Property Business Licence",
+          "description": "Business licence attributes for short-term and long-term rental properties",
+          "attributes": [
+            { "name": "business_licence_type", "displayName": "Business Licence Type", "dataType": "string", "description": "The category of licence issued (e.g., Short-Term Rental, Long-Term Rental)" },
+            { "name": "business_sub_type", "displayName": "Business Sub-Type", "dataType": "string", "description": "The sub type of business licence (e.g., Multiple Dwelling - 99 Year Lease)" },
+            { "name": "business_trade_name", "displayName": "Business / Trade Name", "dataType": "string", "description": "The business name of the operator" },
+            { "name": "licence_number", "displayName": "Licence Number", "dataType": "string", "description": "The issued licence number (e.g., 24-123456)" },
+            { "name": "licence_revision_number", "displayName": "Licence Revision Number", "dataType": "string", "description": "The revision number of the business licence" },
+            { "name": "licence_holder_given_name", "displayName": "Licence Holder First Name", "dataType": "string", "description": "Licence holder given name" },
+            { "name": "licence_holder_family_name", "displayName": "Licence Holder Last Name", "dataType": "string", "description": "Licence holder family name" },
+            { "name": "licence_issued_dateint", "displayName": "Issue Date", "dataType": "integer", "description": "The issued date in YYYYMMDD format" },
+            { "name": "licence_valid_from_dateint", "displayName": "Licence Start Date", "dataType": "integer", "description": "The date operations can begin in YYYYMMDD format" },
+            { "name": "licence_expiry_dateint", "displayName": "Expiry Date", "dataType": "integer", "description": "The expiry date in YYYYMMDD format" },
+            { "name": "licence_summary", "displayName": "Licence Summary", "dataType": "string", "description": "Concatenated summary of licence number and expiry" }
+          ]
+        },
+        {
+          "id": "cov-rental-location",
+          "name": "Rental Property Location",
+          "description": "Location and address attributes for the licensed rental property",
+          "attributes": [
+            { "name": "unit", "displayName": "Unit Number", "dataType": "string", "description": "The unit number (e.g., 101, 3B)" },
+            { "name": "unit_type", "displayName": "Unit Type", "dataType": "string", "description": "The unit type (e.g., Suite, Basement)" },
+            { "name": "street_number", "displayName": "Street Number", "dataType": "string", "description": "The street number" },
+            { "name": "street_name", "displayName": "Street Name", "dataType": "string", "description": "The street name (e.g., Main Street)" },
+            { "name": "municipality", "displayName": "Municipality", "dataType": "string", "description": "The municipality (e.g., Vancouver)" },
+            { "name": "municipality_status", "displayName": "Municipality Status", "dataType": "string", "description": "Municipality type (e.g., City)" },
+            { "name": "regional_district", "displayName": "Regional District", "dataType": "string", "description": "One of BC's 27 regional districts (e.g., Metro Vancouver)" },
+            { "name": "province_territory", "displayName": "Province / Territory", "dataType": "string", "description": "The province or territory" },
+            { "name": "postal_code", "displayName": "Postal Code", "dataType": "string", "description": "The postal code (e.g., V6B 2Y5)" },
+            { "name": "country", "displayName": "Country", "dataType": "string", "description": "The country" },
+            { "name": "full_licence_address", "displayName": "Full Licence Address", "dataType": "string", "description": "Combination of all address attributes" },
+            { "name": "short_address", "displayName": "Short Address", "dataType": "string", "description": "Shortened address (unit, street number, street name)" },
+            { "name": "local_area", "displayName": "Neighbourhood / Local Area", "dataType": "string", "description": "One of Vancouver's 22 neighbourhoods (e.g., Kitsilano)" },
+            { "name": "GIS_coordinates", "displayName": "GIS Coordinates", "dataType": "string", "description": "Geographic coordinates (lat,long)" }
+          ]
+        },
+        {
+          "id": "cov-rental-property",
+          "name": "Rental Property Details",
+          "description": "Property characteristics for the licensed rental",
+          "attributes": [
+            { "name": "property_residence_type", "displayName": "Property Residence Type", "dataType": "string", "description": "Type of residence (e.g., Condominium, Single Family)" },
+            { "name": "location_type", "displayName": "Location Type", "dataType": "string", "description": "Type of business location (e.g., Principal Residence, Secondary Suite)" },
+            { "name": "number_of_dwelling_unitsint", "displayName": "Number of Dwelling Units", "dataType": "integer", "description": "Number of dwelling units (for LTR licences)" },
+            { "name": "PID", "displayName": "Parcel Identifier (PID)", "dataType": "string", "description": "Nine digit parcel identifier (e.g., 012-345-678)" },
+            { "name": "strata_flag", "displayName": "Strata Flag", "dataType": "boolean", "description": "Whether property is part of a strata development" }
+          ]
+        },
+        {
+          "id": "cov-rental-evidence",
+          "name": "Rental Licence Evidence",
+          "description": "Verification evidence and proofs collected during licensing",
+          "attributes": [
+            { "name": "identity_verification_proof", "displayName": "Identity Verification Proof", "dataType": "string", "description": "Method and proofs for identity verification (e.g., BC Person Credential)" },
+            { "name": "primary_address_verification_proof", "displayName": "Primary Address Proof", "dataType": "string", "description": "Method for verifying primary address (e.g., ICBC Address Record)" },
+            { "name": "property_owner_proof", "displayName": "Property Owner Proof", "dataType": "string", "description": "Evidence of property ownership" },
+            { "name": "authorized_verification_proof", "displayName": "Authorized Verification Proof", "dataType": "string", "description": "Evidence of authorization from property owner" }
+          ]
+        }
+      ]
     }
   ]
 }
