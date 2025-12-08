@@ -26,7 +26,7 @@ const SCALE = 1.5; // Scale factor for larger editing canvas
 const CANVAS_WIDTH = CARD_WIDTH * SCALE;
 const CANVAS_HEIGHT = CARD_HEIGHT * SCALE;
 const MIN_ZONE_SIZE = 5; // Minimum 5% width/height
-const GRID_SIZE = 8; // 8x8 grid
+const GRID_SIZE = 16; // 16x16 grid for finer positioning
 
 export default function ZoneEditor({ onClose }: ZoneEditorProps) {
   const editingTemplate = useZoneTemplateStore((state) => state.editingTemplate);
@@ -482,16 +482,16 @@ export default function ZoneEditor({ onClose }: ZoneEditorProps) {
               }}
               onMouseDown={handleCanvasMouseDown}
             >
-              {/* 8x8 Grid lines for guidance */}
+              {/* 16x16 Grid lines for guidance */}
               <div className="absolute inset-0 pointer-events-none">
                 {/* Vertical lines */}
                 {Array.from({ length: GRID_SIZE - 1 }, (_, i) => {
                   const pos = ((i + 1) / GRID_SIZE) * 100;
-                  const isMajor = (i + 1) % 2 === 0; // Every other line is major
+                  const isMajor = (i + 1) % 4 === 0; // Every 4th line is major (25%, 50%, 75%)
                   return (
                     <div
                       key={`v-${i}`}
-                      className={`absolute top-0 bottom-0 w-px ${isMajor ? 'bg-gray-200' : 'bg-gray-100'}`}
+                      className={`absolute top-0 bottom-0 w-px ${isMajor ? 'bg-gray-300' : 'bg-gray-100'}`}
                       style={{ left: `${pos}%` }}
                     />
                   );
@@ -499,11 +499,11 @@ export default function ZoneEditor({ onClose }: ZoneEditorProps) {
                 {/* Horizontal lines */}
                 {Array.from({ length: GRID_SIZE - 1 }, (_, i) => {
                   const pos = ((i + 1) / GRID_SIZE) * 100;
-                  const isMajor = (i + 1) % 2 === 0; // Every other line is major
+                  const isMajor = (i + 1) % 4 === 0; // Every 4th line is major (25%, 50%, 75%)
                   return (
                     <div
                       key={`h-${i}`}
-                      className={`absolute left-0 right-0 h-px ${isMajor ? 'bg-gray-200' : 'bg-gray-100'}`}
+                      className={`absolute left-0 right-0 h-px ${isMajor ? 'bg-gray-300' : 'bg-gray-100'}`}
                       style={{ top: `${pos}%` }}
                     />
                   );
