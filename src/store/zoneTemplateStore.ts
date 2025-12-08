@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import {
   ZoneTemplate,
   ZoneTemplateStore,
-  createCopaStandardTemplate,
-  COPA_STANDARD_TEMPLATE_ID,
   CARD_WIDTH,
   CARD_HEIGHT,
 } from '../types/vct';
@@ -94,9 +92,9 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   error: string | null;
   loadTemplates: () => Promise<void>;
 }>()((set, get) => ({
-  // Initial state
-  templates: [createCopaStandardTemplate()],
-  selectedTemplateId: COPA_STANDARD_TEMPLATE_ID,
+  // Initial state - empty until loaded from server
+  templates: [],
+  selectedTemplateId: null,
   editingTemplate: null,
   isLoading: false,
   error: null,
@@ -107,7 +105,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
     try {
       const serverTemplates = await api.fetchAll();
       set({
-        templates: [createCopaStandardTemplate(), ...serverTemplates],
+        templates: serverTemplates,
         isLoading: false,
       });
     } catch (error) {
@@ -155,7 +153,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   // Update an existing template
   updateTemplate: (id, updates) => {
     const template = get().templates.find((t) => t.id === id);
-    if (!template || template.isBuiltIn) return;
+    if (!template) return;
 
     const updatedTemplate = {
       ...template,
@@ -182,19 +180,20 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
     });
   },
 
-  // Delete a template (cannot delete built-in templates)
+  // Delete a template
   deleteTemplate: (id) => {
-    const template = get().templates.find((t) => t.id === id);
-    if (template?.isBuiltIn) return;
-
     // Optimistically remove from local state
-    set((state) => ({
-      templates: state.templates.filter((t) => t.id !== id),
-      selectedTemplateId:
-        state.selectedTemplateId === id
-          ? COPA_STANDARD_TEMPLATE_ID
-          : state.selectedTemplateId,
-    }));
+    set((state) => {
+      const remainingTemplates = state.templates.filter((t) => t.id !== id);
+      return {
+        templates: remainingTemplates,
+        // If deleting the selected template, select the first remaining or null
+        selectedTemplateId:
+          state.selectedTemplateId === id
+            ? (remainingTemplates[0]?.id ?? null)
+            : state.selectedTemplateId,
+      };
+    });
 
     // Delete from server
     api.delete(id).then((success) => {
@@ -218,7 +217,6 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
       ...JSON.parse(JSON.stringify(template)),
       id: newId,
       name: newName,
-      isBuiltIn: false,
       createdAt: now,
       updatedAt: now,
       author: undefined, // Will be set by server
@@ -273,7 +271,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   // Add a zone to the editing template
   addZone: (face, zone) => {
     set((state) => {
-      if (!state.editingTemplate || state.editingTemplate.isBuiltIn) {
+      if (!state.editingTemplate) {
         return state;
       }
       return {
@@ -293,7 +291,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   // Update a zone in the editing template
   updateZone: (face, zoneId, updates) => {
     set((state) => {
-      if (!state.editingTemplate || state.editingTemplate.isBuiltIn) {
+      if (!state.editingTemplate) {
         return state;
       }
       return {
@@ -312,7 +310,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   // Delete a zone from the editing template
   deleteZone: (face, zoneId) => {
     set((state) => {
-      if (!state.editingTemplate || state.editingTemplate.isBuiltIn) {
+      if (!state.editingTemplate) {
         return state;
       }
       return {
@@ -331,7 +329,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   // Copy front zones to back
   copyFrontToBack: () => {
     set((state) => {
-      if (!state.editingTemplate || state.editingTemplate.isBuiltIn) {
+      if (!state.editingTemplate) {
         return state;
       }
       return {
@@ -351,7 +349,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   // Copy back zones to front
   copyBackToFront: () => {
     set((state) => {
-      if (!state.editingTemplate || state.editingTemplate.isBuiltIn) {
+      if (!state.editingTemplate) {
         return state;
       }
       return {
@@ -371,7 +369,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   // Save the editing template back to the templates list
   saveEditingTemplate: () => {
     const { editingTemplate, templates } = get();
-    if (!editingTemplate || editingTemplate.isBuiltIn) return;
+    if (!editingTemplate) return;
 
     const now = new Date().toISOString();
     const existingIndex = templates.findIndex(
@@ -405,12 +403,6 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
 
   // Get a template by ID
   getTemplate: (id) => get().templates.find((t) => t.id === id),
-
-  // Get all built-in templates
-  getBuiltInTemplates: () => get().templates.filter((t) => t.isBuiltIn),
-
-  // Get all user-created templates
-  getUserTemplates: () => get().templates.filter((t) => !t.isBuiltIn),
 }));
 
 // Helper to create a new blank template
@@ -421,7 +413,6 @@ export const createBlankTemplate = (name: string): Omit<ZoneTemplate, 'id' | 'cr
   back: { zones: [] },
   card_width: CARD_WIDTH,
   card_height: CARD_HEIGHT,
-  isBuiltIn: false,
 });
 
 // Load templates from server (call on app initialization)

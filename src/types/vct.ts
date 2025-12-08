@@ -402,77 +402,13 @@ export interface ZoneTemplate {
   card_height: number; // Reference height (default 214px)
   createdAt: string;
   updatedAt: string;
-  isBuiltIn?: boolean; // True for COPA standard template
   frontOnly?: boolean; // If true, template only has front face (no back)
   author?: ZoneTemplateAuthor; // Who created this template
 }
 
-// Built-in COPA template constant
-export const COPA_STANDARD_TEMPLATE_ID = 'copa-standard-v1';
-
 // Card dimensions (credit card ratio)
 export const CARD_WIDTH = 340;
 export const CARD_HEIGHT = 214;
-
-// Helper to create COPA standard template (matches current fixed zones)
-export const createCopaStandardTemplate = (): ZoneTemplate => ({
-  id: COPA_STANDARD_TEMPLATE_ID,
-  name: 'COPA Standard',
-  description: 'Standard COPA credential card layout with 6 fixed zones',
-  front: {
-    zones: [
-      {
-        id: 'portfolio_issuer',
-        name: 'Portfolio Issuer',
-        position: { x: 0, y: 0, width: 50, height: 18.7 },
-      },
-      {
-        id: 'network_mark',
-        name: 'Network Mark',
-        position: { x: 50, y: 0, width: 50, height: 18.7 },
-      },
-      {
-        id: 'primary_attribute',
-        name: 'Primary Attribute',
-        position: { x: 0, y: 18.7, width: 100, height: 42.5 },
-      },
-      {
-        id: 'secondary_attribute',
-        name: 'Secondary Attribute',
-        position: { x: 0, y: 61.2, width: 100, height: 17.8 },
-      },
-      {
-        id: 'credential_name',
-        name: 'Credential Name',
-        position: { x: 0, y: 79, width: 50, height: 21 },
-      },
-      {
-        id: 'credential_issuer',
-        name: 'Credential Issuer',
-        position: { x: 50, y: 79, width: 50, height: 21 },
-      },
-    ],
-  },
-  back: {
-    zones: [
-      {
-        id: 'metadata',
-        name: 'Metadata',
-        position: { x: 0, y: 0, width: 100, height: 40 },
-      },
-      {
-        id: 'evidence',
-        name: 'Evidence Sources',
-        position: { x: 0, y: 40, width: 100, height: 60 },
-      },
-    ],
-  },
-  card_width: CARD_WIDTH,
-  card_height: CARD_HEIGHT,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-  isBuiltIn: true,
-});
 
 // Zone template store state interface
 export interface ZoneTemplateStore {
@@ -510,8 +446,6 @@ export interface ZoneTemplateStore {
 
   // Getters
   getTemplate: (id: string) => ZoneTemplate | undefined;
-  getBuiltInTemplates: () => ZoneTemplate[];
-  getUserTemplates: () => ZoneTemplate[];
 }
 
 // Helper to check for zone overlaps

@@ -5,8 +5,6 @@ import {
   getLocaleName,
   isFrontBackFormat,
   VCTSvgTemplate,
-  METADATA_FIELD_OPTIONS,
-  COPA_STANDARD_TEMPLATE_ID,
   getZoneColor,
   Zone,
 } from '../../types/vct';
@@ -83,49 +81,6 @@ function AutoSizeText({
   );
 }
 
-// Gridlines overlay component for COPA card zones
-function GridlinesOverlay() {
-  const zones = [
-    { name: 'top_left', top: 0, left: 0, width: '50%', height: '40px', color: 'rgba(59, 130, 246, 0.3)' },
-    { name: 'top_right', top: 0, right: 0, width: '50%', height: '40px', color: 'rgba(168, 85, 247, 0.3)' },
-    { name: 'center', top: '40px', left: 0, width: '100%', height: 'calc(100% - 85px - 40px)', color: 'rgba(34, 197, 94, 0.3)' },
-    { name: 'center_below', bottom: '45px', left: 0, width: '100%', height: '40px', color: 'rgba(251, 191, 36, 0.3)' },
-    { name: 'bottom_left', bottom: 0, left: 0, width: '50%', height: '45px', color: 'rgba(239, 68, 68, 0.3)' },
-    { name: 'bottom_right', bottom: 0, right: 0, width: '50%', height: '45px', color: 'rgba(236, 72, 153, 0.3)' },
-  ];
-
-  return (
-    <div className="absolute inset-0 pointer-events-none z-10">
-      {zones.map((zone) => (
-        <div
-          key={zone.name}
-          className="absolute flex items-center justify-center border border-dashed"
-          style={{
-            top: zone.top,
-            left: zone.left,
-            right: zone.right,
-            bottom: zone.bottom,
-            width: zone.width,
-            height: zone.height,
-            backgroundColor: zone.color,
-            borderColor: zone.color.replace('0.3', '0.8'),
-          }}
-        >
-          <span
-            className="text-[9px] font-mono font-semibold px-1 py-0.5 rounded"
-            style={{
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              color: '#fff',
-            }}
-          >
-            {zone.name}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // Dynamic zones overlay for custom templates
 interface DynamicZonesOverlayProps {
   zones: Zone[];
@@ -175,11 +130,9 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
   const selectedTemplateId = useZoneTemplateStore((state) => state.selectedTemplateId);
   const getTemplate = useZoneTemplateStore((state) => state.getTemplate);
   const selectedTemplate = selectedTemplateId ? getTemplate(selectedTemplateId) : null;
-  const isLegacyMode = selectedTemplateId === COPA_STANDARD_TEMPLATE_ID;
 
-  // Check if the card can be flipped (has back zones or is legacy mode)
-  const canFlip = isLegacyMode ||
-    (selectedTemplate && !selectedTemplate.frontOnly && selectedTemplate.back.zones.length > 0);
+  // Check if the card can be flipped (has back zones)
+  const canFlip = selectedTemplate && !selectedTemplate.frontOnly && selectedTemplate.back.zones.length > 0;
 
   // Sync flip state when cardSide prop changes from parent buttons
   useEffect(() => {
@@ -272,11 +225,6 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
           >
             {frontTemplate?.uri ? (
               renderSvgTemplate(frontTemplate, 'front')
-            ) : isLegacyMode ? (
-              <div className="relative">
-                {renderSimpleCardFront()}
-                {showGridlines && <GridlinesOverlay />}
-              </div>
             ) : (
               <div className="relative">
                 {renderDynamicCardFront()}
@@ -297,11 +245,6 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
           >
             {backTemplate?.uri ? (
               renderSvgTemplate(backTemplate, 'back')
-            ) : isLegacyMode ? (
-              <div className="relative">
-                {renderSimpleCardBack()}
-                {showGridlines && <GridlinesOverlay />}
-              </div>
             ) : (
               <div className="relative">
                 {renderDynamicCardBack()}
@@ -321,7 +264,7 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
             ) : (
               <>Front only (no flip)</>
             )}
-            {!isLegacyMode && selectedTemplate && ` • ${selectedTemplate.name}`}
+            {selectedTemplate && ` • ${selectedTemplate.name}`}
           </p>
           <button
             onClick={() => setShowGridlines(!showGridlines)}
@@ -334,304 +277,6 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
             {showGridlines ? '⊞ Hide Zones' : '⊞ Show Zones'}
           </button>
         </div>
-      </div>
-    );
-  };
-
-  // Simple card front (fallback when no SVG template)
-  const renderSimpleCardFront = () => {
-    const simple = display.rendering?.simple;
-    const cardElements = display.card_elements?.front;
-
-    // Helper to get text content with fallback
-    const getPrimaryText = () =>
-      getClaimValue(cardElements?.primary_attribute?.claim_path) ||
-      cardElements?.primary_attribute?.value ||
-      'Primary Attribute';
-
-    const getSecondaryText = () =>
-      getClaimValue(cardElements?.secondary_attribute?.claim_path) ||
-      cardElements?.secondary_attribute?.value ||
-      'Secondary Attribute';
-
-    const getPortfolioIssuerText = () =>
-      cardElements?.portfolio_issuer?.value || '';
-
-    const getCredentialNameText = () =>
-      cardElements?.credential_name?.value || display.name || 'Credential Name';
-
-    const getCredentialIssuerText = () =>
-      getClaimValue(cardElements?.credential_issuer?.claim_path) ||
-      cardElements?.credential_issuer?.value ||
-      '';
-
-    const isPrimaryPlaceholder = !getClaimValue(cardElements?.primary_attribute?.claim_path) &&
-      !cardElements?.primary_attribute?.value;
-    const isSecondaryPlaceholder = !getClaimValue(cardElements?.secondary_attribute?.claim_path) &&
-      !cardElements?.secondary_attribute?.value;
-    const isCredentialNamePlaceholder = !cardElements?.credential_name?.value && !display.name;
-
-    // Zone dimensions matching GridlinesOverlay
-    const ZONE = {
-      TOP_HEIGHT: 40,
-      BOTTOM_HEIGHT: 45,
-      CENTER_BELOW_HEIGHT: 40,
-      PADDING: 8, // Inner padding within zones
-      HALF_WIDTH: 170 - 8, // 50% of 340px minus padding
-    };
-
-    return (
-      <div
-        className="rounded-xl shadow-lg overflow-hidden relative"
-        style={{
-          backgroundColor: simple?.background_color || '#1E3A5F',
-          color: simple?.text_color || '#FFFFFF',
-          fontFamily: simple?.font_family ? `"${simple.font_family}", sans-serif` : undefined,
-          width: '340px',
-          height: '214px',
-        }}
-      >
-        {/* Top Left Zone: Portfolio Issuer */}
-        <div
-          className="absolute flex items-center gap-2"
-          style={{
-            top: 0,
-            left: 0,
-            width: '50%',
-            height: `${ZONE.TOP_HEIGHT}px`,
-            padding: `${ZONE.PADDING}px`,
-          }}
-        >
-          {cardElements?.portfolio_issuer?.logo_uri ? (
-            <img
-              src={cardElements.portfolio_issuer.logo_uri}
-              alt="Portfolio Issuer"
-              className="h-6 w-auto object-contain flex-shrink-0"
-              style={{ maxHeight: `${ZONE.TOP_HEIGHT - ZONE.PADDING * 2}px` }}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : null}
-          {getPortfolioIssuerText() ? (
-            <AutoSizeText
-              text={getPortfolioIssuerText()}
-              maxFontSize={12}
-              minFontSize={8}
-              maxWidth={cardElements?.portfolio_issuer?.logo_uri ? 90 : ZONE.HALF_WIDTH}
-            />
-          ) : (
-            !cardElements?.portfolio_issuer?.logo_uri && (
-              <span className="text-xs opacity-50">Portfolio Issuer</span>
-            )
-          )}
-        </div>
-
-        {/* Top Right Zone: Network Mark */}
-        <div
-          className="absolute flex items-center justify-end gap-2"
-          style={{
-            top: 0,
-            right: 0,
-            width: '50%',
-            height: `${ZONE.TOP_HEIGHT}px`,
-            padding: `${ZONE.PADDING}px`,
-          }}
-        >
-          {cardElements?.network_mark?.logo_uri ? (
-            <img
-              src={cardElements.network_mark.logo_uri}
-              alt="Network Mark"
-              className="h-5 w-auto object-contain"
-              style={{ maxHeight: `${ZONE.TOP_HEIGHT - ZONE.PADDING * 2}px` }}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : (
-            <span className="text-xs font-semibold opacity-75">
-              {cardElements?.network_mark?.value === 'cornerstone' ? '◆ CORNERSTONE' : 'Network'}
-            </span>
-          )}
-        </div>
-
-        {/* Center Zone: Primary Attribute */}
-        <div
-          className="absolute flex items-center"
-          style={{
-            top: `${ZONE.TOP_HEIGHT}px`,
-            left: 0,
-            width: '100%',
-            height: `calc(100% - ${ZONE.TOP_HEIGHT + ZONE.BOTTOM_HEIGHT + ZONE.CENTER_BELOW_HEIGHT}px)`,
-            padding: `${ZONE.PADDING}px`,
-          }}
-        >
-          <AutoSizeText
-            text={getPrimaryText()}
-            maxFontSize={20}
-            minFontSize={10}
-            className="font-bold"
-            style={{ opacity: isPrimaryPlaceholder ? 0.5 : 1 }}
-            maxWidth={340 - ZONE.PADDING * 2}
-          />
-        </div>
-
-        {/* Center Below Zone: Secondary Attribute */}
-        <div
-          className="absolute flex items-center"
-          style={{
-            bottom: `${ZONE.BOTTOM_HEIGHT}px`,
-            left: 0,
-            width: '100%',
-            height: `${ZONE.CENTER_BELOW_HEIGHT}px`,
-            padding: `${ZONE.PADDING}px`,
-          }}
-        >
-          {cardElements?.secondary_attribute && (
-            <AutoSizeText
-              text={getSecondaryText()}
-              maxFontSize={14}
-              minFontSize={9}
-              style={{ opacity: isSecondaryPlaceholder ? 0.5 : 0.8 }}
-              maxWidth={340 - ZONE.PADDING * 2}
-            />
-          )}
-        </div>
-
-        {/* Bottom Left Zone: Credential Name */}
-        <div
-          className="absolute flex items-center"
-          style={{
-            bottom: 0,
-            left: 0,
-            width: '50%',
-            height: `${ZONE.BOTTOM_HEIGHT}px`,
-            padding: `${ZONE.PADDING}px`,
-            backgroundColor: 'rgba(0,0,0,0.1)',
-          }}
-        >
-          <AutoSizeText
-            text={getCredentialNameText()}
-            maxFontSize={12}
-            minFontSize={8}
-            style={{ opacity: isCredentialNamePlaceholder ? 0.5 : 1 }}
-            maxWidth={ZONE.HALF_WIDTH}
-          />
-        </div>
-
-        {/* Bottom Right Zone: Credential Issuer */}
-        <div
-          className="absolute flex items-center justify-end gap-2"
-          style={{
-            bottom: 0,
-            right: 0,
-            width: '50%',
-            height: `${ZONE.BOTTOM_HEIGHT}px`,
-            padding: `${ZONE.PADDING}px`,
-            backgroundColor: 'rgba(0,0,0,0.1)',
-          }}
-        >
-          {cardElements?.credential_issuer?.logo_uri ? (
-            <img
-              src={cardElements.credential_issuer.logo_uri}
-              alt="Credential Issuer"
-              className="h-5 w-auto object-contain flex-shrink-0"
-              style={{ maxHeight: `${ZONE.BOTTOM_HEIGHT - ZONE.PADDING * 2}px` }}
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          ) : null}
-          {getCredentialIssuerText() ? (
-            <AutoSizeText
-              text={getCredentialIssuerText()}
-              maxFontSize={12}
-              minFontSize={8}
-              style={{ opacity: 0.75 }}
-              maxWidth={cardElements?.credential_issuer?.logo_uri ? 90 : ZONE.HALF_WIDTH}
-            />
-          ) : (
-            !cardElements?.credential_issuer?.logo_uri && (
-              <span className="text-xs opacity-50">Issuer</span>
-            )
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Simple card back (fallback when no SVG template)
-  const renderSimpleCardBack = () => {
-    const simple = display.rendering?.simple;
-    const backElements = display.card_elements?.back;
-    const metadata = backElements?.metadata;
-    const evidence = backElements?.evidence;
-
-    return (
-      <div
-        className="rounded-xl shadow-lg overflow-hidden flex flex-col"
-        style={{
-          backgroundColor: simple?.background_color || '#1E3A5F',
-          color: simple?.text_color || '#FFFFFF',
-          fontFamily: simple?.font_family ? `"${simple.font_family}", sans-serif` : undefined,
-          width: '340px',
-          height: '214px',
-        }}
-      >
-          {/* Metadata Section */}
-        {metadata && metadata.fields.length > 0 && (
-          <div className="px-4 py-2 text-xs space-y-1">
-            {metadata.fields.map((fieldId) => {
-              const fieldDef = METADATA_FIELD_OPTIONS.find((f) => f.id === fieldId);
-              return (
-                <div key={fieldId} className="flex justify-between">
-                  <span className="opacity-75">{fieldDef?.label || fieldId}:</span>
-                  <span>-</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Evidence Section */}
-        {evidence && evidence.sources.length > 0 && (
-          <div className="px-4 py-2 flex-grow">
-            <p className="text-xs opacity-75 mb-2">Evidence / Data Furnishers:</p>
-            <div className="flex flex-wrap gap-2">
-              {evidence.sources.slice(0, 4).map((source) => (
-                <div
-                  key={source.id}
-                  className="w-10 h-10 rounded bg-white/20 flex items-center justify-center text-xs font-medium overflow-hidden"
-                  title={`${source.display} - ${source.description}`}
-                >
-                  {source.logo_uri ? (
-                    <img
-                      src={source.logo_uri}
-                      alt={source.display}
-                      className="w-full h-full object-contain p-1"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).parentElement!.innerHTML =
-                          source.display.slice(0, 2).toUpperCase();
-                      }}
-                    />
-                  ) : source.badge === 'initials' ? (
-                    source.display.slice(0, 2).toUpperCase()
-                  ) : (
-                    <span className="text-[8px] opacity-50">IMG</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {(!metadata || metadata.fields.length === 0) && (!evidence || evidence.sources.length === 0) && (
-          <div className="flex-grow flex items-center justify-center text-xs opacity-50">
-            Configure back card elements
-          </div>
-        )}
       </div>
     );
   };
@@ -670,7 +315,7 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
     if (!selectedTemplate) {
       return (
         <div
-          className="rounded-xl shadow-lg overflow-hidden flex items-center justify-center"
+          className="rounded-xl shadow-lg overflow-hidden flex flex-col items-center justify-center"
           style={{
             backgroundColor: simple?.background_color || '#1E3A5F',
             color: simple?.text_color || '#FFFFFF',
@@ -678,7 +323,13 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
             height: '214px',
           }}
         >
-          <p className="text-sm opacity-50">No template selected</p>
+          <div className="text-center px-6">
+            <svg className="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
+            <p className="text-sm opacity-75 font-medium">No template selected</p>
+            <p className="text-xs opacity-50 mt-1">Create your first zone template in the Display tab</p>
+          </div>
         </div>
       );
     }
@@ -775,7 +426,7 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
     if (!selectedTemplate) {
       return (
         <div
-          className="rounded-xl shadow-lg overflow-hidden flex items-center justify-center"
+          className="rounded-xl shadow-lg overflow-hidden flex flex-col items-center justify-center"
           style={{
             backgroundColor: simple?.background_color || '#1E3A5F',
             color: simple?.text_color || '#FFFFFF',
@@ -783,7 +434,13 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
             height: '214px',
           }}
         >
-          <p className="text-sm opacity-50">No template selected</p>
+          <div className="text-center px-6">
+            <svg className="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
+            <p className="text-sm opacity-75 font-medium">No template selected</p>
+            <p className="text-xs opacity-50 mt-1">Select a template to configure the back</p>
+          </div>
         </div>
       );
     }

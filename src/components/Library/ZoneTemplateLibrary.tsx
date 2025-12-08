@@ -34,9 +34,6 @@ export default function ZoneTemplateLibrary({
 
   if (!isOpen) return null;
 
-  const builtInTemplates = templates.filter((t) => t.isBuiltIn);
-  const userTemplates = templates.filter((t) => !t.isBuiltIn);
-
   const handleCreateNew = () => {
     setNewTemplateName('');
     setNewTemplateFrontOnly(false);
@@ -54,7 +51,6 @@ export default function ZoneTemplateLibrary({
       card_height: 214,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      isBuiltIn: false,
       frontOnly: newTemplateFrontOnly,
       author: currentUser ? {
         id: currentUser.id.toString(),
@@ -126,18 +122,11 @@ export default function ZoneTemplateLibrary({
               <p className="text-xs text-gray-400 mt-0.5">by {template.author.name || template.author.login}</p>
             )}
           </div>
-          <div className="flex gap-1">
-            {template.frontOnly && (
-              <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-600 rounded">
-                Front only
-              </span>
-            )}
-            {template.isBuiltIn && (
-              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                Built-in
-              </span>
-            )}
-          </div>
+          {template.frontOnly && (
+            <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-600 rounded">
+              Front only
+            </span>
+          )}
         </div>
 
         <div className="text-xs text-gray-500 mb-3">
@@ -259,8 +248,14 @@ export default function ZoneTemplateLibrary({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col">
+      <div
+        className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <div>
@@ -271,9 +266,11 @@ export default function ZoneTemplateLibrary({
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl"
+              className="text-gray-500 hover:text-gray-700"
             >
-              ✕
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
 
@@ -289,30 +286,25 @@ export default function ZoneTemplateLibrary({
               </button>
             </div>
 
-            {/* Built-in Templates */}
-            {builtInTemplates.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-sm font-semibold text-gray-700 mb-3">Built-in Templates</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {builtInTemplates.map(renderTemplateCard)}
-                </div>
-              </div>
-            )}
-
-            {/* Community Templates */}
+            {/* Templates */}
             <div>
               <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                Community Templates ({userTemplates.length})
+                Templates ({templates.length})
               </h4>
-              {userTemplates.length > 0 ? (
+              {templates.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {userTemplates.map(renderTemplateCard)}
+                  {templates.map(renderTemplateCard)}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-sm">No community templates yet.</p>
-                  <p className="text-xs mt-1">
-                    Create a new template or duplicate a built-in one to share with the team.
+                <div className="text-center py-12 text-gray-400">
+                  <div className="mb-4">
+                    <svg className="w-12 h-12 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                    </svg>
+                  </div>
+                  <p className="text-base font-medium text-gray-500">No templates yet</p>
+                  <p className="text-sm mt-2">
+                    Create your first zone template to define custom layouts for your credentials.
                   </p>
                 </div>
               )}
