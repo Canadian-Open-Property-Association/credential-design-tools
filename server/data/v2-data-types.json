@@ -1,0 +1,1222 @@
+{
+  "dataTypes": [
+    {
+      "id": "advisor-details",
+      "name": "Advisor Details",
+      "description": "Data attributes for advisor details",
+      "category": "identity",
+      "properties": [
+        {
+          "id": "prop-advisor_email_address",
+          "name": "advisor_email_address",
+          "displayName": "Advisor Email Address",
+          "valueType": "email",
+          "required": false
+        }
+      ],
+      "sources": [
+        {
+          "entityId": "copa-interac",
+          "entityName": "Interac Corp.",
+          "regionsCovered": [],
+          "addedAt": "2025-12-09T01:21:07.787Z"
+        }
+      ],
+      "createdAt": "2025-12-09T01:21:07.787Z",
+      "updatedAt": "2025-12-09T01:21:07.787Z"
+    },
+    {
+      "id": "homeowner-details",
+      "name": "Homeowner Details",
+      "description": "Data attributes for homeowner details",
+      "category": "identity",
+      "properties": [
+        {
+          "id": "prop-homeowner_first_name",
+          "name": "homeowner_first_name",
+          "displayName": "Homeowner First Name",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-homeowner_last_name",
+          "name": "homeowner_last_name",
+          "displayName": "Homeowner Last Name",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-full_property_address",
+          "name": "full_property_address",
+          "displayName": "Full Property Address",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-purchase_price",
+          "name": "purchase_price",
+          "displayName": "Purchase Price",
+          "valueType": "currency",
+          "required": false
+        },
+        {
+          "id": "prop-purchase_date",
+          "name": "purchase_date",
+          "displayName": "Purchase Date",
+          "valueType": "date",
+          "required": false
+        },
+        {
+          "id": "prop-email_address",
+          "name": "email_address",
+          "displayName": "Email Address",
+          "valueType": "email",
+          "required": false
+        }
+      ],
+      "sources": [
+        {
+          "entityId": "copa-interac",
+          "entityName": "Interac Corp.",
+          "regionsCovered": [
+            "BC"
+          ],
+          "addedAt": "2025-12-09T01:21:07.787Z"
+        },
+        {
+          "entityId": "copa-landcor",
+          "entityName": "Landcor Data Corporation",
+          "regionsCovered": [
+            "BC"
+          ],
+          "addedAt": "2025-12-09T01:21:07.787Z"
+        }
+      ],
+      "createdAt": "2025-12-09T01:21:07.787Z",
+      "updatedAt": "2025-12-09T01:21:07.787Z"
+    },
+    {
+      "id": "homeowneradvisor-verified-data",
+      "name": "Homeowner/advisor Verified Data",
+      "description": "Data attributes for homeowner/advisor verified data",
+      "category": "identity",
+      "properties": [
+        {
+          "id": "prop-middle_name",
+          "name": "middle_name",
+          "displayName": "Middle Name",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-title",
+          "name": "title",
+          "displayName": "Title",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-honorific",
+          "name": "honorific",
+          "displayName": "Honorific",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-date_of_birth",
+          "name": "date_of_birth",
+          "displayName": "Date Of Birth",
+          "valueType": "date",
+          "required": false
+        },
+        {
+          "id": "prop-address",
+          "name": "address",
+          "displayName": "Address",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-phone_number",
+          "name": "phone_number",
+          "displayName": "Phone Number",
+          "valueType": "phone",
+          "required": false
+        },
+        {
+          "id": "prop-age_over_18",
+          "name": "age_over_18",
+          "displayName": "Age Over 18",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-age_over_19",
+          "name": "age_over_19",
+          "displayName": "Age Over 19",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-age_over_21",
+          "name": "age_over_21",
+          "displayName": "Age Over 21",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-age_over_25",
+          "name": "age_over_25",
+          "displayName": "Age Over 25",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-age_over_55",
+          "name": "age_over_55",
+          "displayName": "Age Over 55",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-age_over_65",
+          "name": "age_over_65",
+          "displayName": "Age Over 65",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-postal_fsa",
+          "name": "postal_fsa",
+          "displayName": "Postal Fsa",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-street_address",
+          "name": "street_address",
+          "displayName": "Street Address",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-locality",
+          "name": "locality",
+          "displayName": "Locality",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-region",
+          "name": "region",
+          "displayName": "Region",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-postal_code",
+          "name": "postal_code",
+          "displayName": "Postal Code",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-country",
+          "name": "country",
+          "displayName": "Country",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-picture",
+          "name": "picture",
+          "displayName": "Picture",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-expiry_date",
+          "name": "expiry_date",
+          "displayName": "Expiry Date",
+          "valueType": "date",
+          "required": false
+        }
+      ],
+      "sources": [
+        {
+          "entityId": "copa-interac",
+          "entityName": "Interac Corp.",
+          "regionsCovered": [
+            "BC"
+          ],
+          "addedAt": "2025-12-09T01:21:07.787Z"
+        }
+      ],
+      "createdAt": "2025-12-09T01:21:07.787Z",
+      "updatedAt": "2025-12-09T01:21:07.787Z"
+    },
+    {
+      "id": "property-comparables",
+      "name": "Property Comparables []",
+      "description": "Data attributes for property comparables []",
+      "category": "property",
+      "properties": [
+        {
+          "id": "prop-property_id",
+          "name": "property_id",
+          "displayName": "Property Id",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-sale_price",
+          "name": "sale_price",
+          "displayName": "Sale Price",
+          "valueType": "currency",
+          "required": false
+        },
+        {
+          "id": "prop-distance",
+          "name": "distance",
+          "displayName": "Distance",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-assessment_area_code",
+          "name": "assessment_area_code",
+          "displayName": "Assessment Area Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-assessment_area",
+          "name": "assessment_area",
+          "displayName": "Assessment Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-jurisdiction_code",
+          "name": "jurisdiction_code",
+          "displayName": "Jurisdiction Code",
+          "valueType": "url",
+          "required": false
+        },
+        {
+          "id": "prop-jurisdiction",
+          "name": "jurisdiction",
+          "displayName": "Jurisdiction",
+          "valueType": "url",
+          "required": false
+        },
+        {
+          "id": "prop-roll_number",
+          "name": "roll_number",
+          "displayName": "Roll Number",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-neighbourhood_code",
+          "name": "neighbourhood_code",
+          "displayName": "Neighbourhood Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-neighbourhood",
+          "name": "neighbourhood",
+          "displayName": "Neighbourhood",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-owner_address",
+          "name": "owner_address",
+          "displayName": "Owner Address",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_lot",
+          "name": "legal_lot",
+          "displayName": "Legal Lot",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_block",
+          "name": "legal_block",
+          "displayName": "Legal Block",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_section",
+          "name": "legal_section",
+          "displayName": "Legal Section",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_township",
+          "name": "legal_township",
+          "displayName": "Legal Township",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_range",
+          "name": "legal_range",
+          "displayName": "Legal Range",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_meridian",
+          "name": "legal_meridian",
+          "displayName": "Legal Meridian",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_plan",
+          "name": "legal_plan",
+          "displayName": "Legal Plan",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_district_lot",
+          "name": "legal_district_lot",
+          "displayName": "Legal District Lot",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_land_district",
+          "name": "legal_land_district",
+          "displayName": "Legal Land District",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_description",
+          "name": "legal_description",
+          "displayName": "Legal Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-total_finished_area",
+          "name": "total_finished_area",
+          "displayName": "Total Finished Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-total_basement_area",
+          "name": "total_basement_area",
+          "displayName": "Total Basement Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-finished_basement_area",
+          "name": "finished_basement_area",
+          "displayName": "Finished Basement Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-covered_deck_area",
+          "name": "covered_deck_area",
+          "displayName": "Covered Deck Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-uncovered_deck_area",
+          "name": "uncovered_deck_area",
+          "displayName": "Uncovered Deck Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-effective_year",
+          "name": "effective_year",
+          "displayName": "Effective Year",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-year_built",
+          "name": "year_built",
+          "displayName": "Year Built",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-assessed_lot_size_sq_ft",
+          "name": "assessed_lot_size_sq_ft",
+          "displayName": "Assessed Lot Size Sq Ft",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bedrooms",
+          "name": "bedrooms",
+          "displayName": "Bedrooms",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bathrooms_4_piece",
+          "name": "bathrooms_4_piece",
+          "displayName": "Bathrooms 4 Piece",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bathrooms_3_piece",
+          "name": "bathrooms_3_piece",
+          "displayName": "Bathrooms 3 Piece",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bathrooms_2_piece",
+          "name": "bathrooms_2_piece",
+          "displayName": "Bathrooms 2 Piece",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bathrooms",
+          "name": "bathrooms",
+          "displayName": "Bathrooms",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-carports",
+          "name": "carports",
+          "displayName": "Carports",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-single_garages",
+          "name": "single_garages",
+          "displayName": "Single Garages",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-multi_garages",
+          "name": "multi_garages",
+          "displayName": "Multi Garages",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-foundation_type",
+          "name": "foundation_type",
+          "displayName": "Foundation Type",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-use_code",
+          "name": "use_code",
+          "displayName": "Use Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-use_description",
+          "name": "use_description",
+          "displayName": "Use Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-unit_type_code",
+          "name": "unit_type_code",
+          "displayName": "Unit Type Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-unit_type_description",
+          "name": "unit_type_description",
+          "displayName": "Unit Type Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-construction_code",
+          "name": "construction_code",
+          "displayName": "Construction Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-construction_description",
+          "name": "construction_description",
+          "displayName": "Construction Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-development_class",
+          "name": "development_class",
+          "displayName": "Development Class",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-development_class_sign",
+          "name": "development_class_sign",
+          "displayName": "Development Class Sign",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-lot_size_sq_ft",
+          "name": "lot_size_sq_ft",
+          "displayName": "Lot Size Sq Ft",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-lot_width_ft",
+          "name": "lot_width_ft",
+          "displayName": "Lot Width Ft",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-lot_depth_ft",
+          "name": "lot_depth_ft",
+          "displayName": "Lot Depth Ft",
+          "valueType": "number",
+          "required": false
+        }
+      ],
+      "sources": [
+        {
+          "entityId": "copa-landcor",
+          "entityName": "Landcor Data Corporation",
+          "regionsCovered": [
+            "BC"
+          ],
+          "addedAt": "2025-12-09T01:21:07.787Z"
+        }
+      ],
+      "createdAt": "2025-12-09T01:21:07.787Z",
+      "updatedAt": "2025-12-09T01:21:07.787Z"
+    },
+    {
+      "id": "property-public-data",
+      "name": "Property Public Data",
+      "description": "Data attributes for property public data",
+      "category": "property",
+      "properties": [
+        {
+          "id": "prop-pid",
+          "name": "pid",
+          "displayName": "Pid",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-number_of_bathrooms",
+          "name": "number_of_bathrooms",
+          "displayName": "Number Of Bathrooms",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-use_code",
+          "name": "use_code",
+          "displayName": "Use Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-use_description",
+          "name": "use_description",
+          "displayName": "Use Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-unit_type_code",
+          "name": "unit_type_code",
+          "displayName": "Unit Type Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-unit_type_description",
+          "name": "unit_type_description",
+          "displayName": "Unit Type Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-school_district",
+          "name": "school_district",
+          "displayName": "School District",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-regional_district",
+          "name": "regional_district",
+          "displayName": "Regional District",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-electoral_area",
+          "name": "electoral_area",
+          "displayName": "Electoral Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-hospital_district",
+          "name": "hospital_district",
+          "displayName": "Hospital District",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-improvement_district",
+          "name": "improvement_district",
+          "displayName": "Improvement District",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-local_area",
+          "name": "local_area",
+          "displayName": "Local Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-construction_code",
+          "name": "construction_code",
+          "displayName": "Construction Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-construction_description",
+          "name": "construction_description",
+          "displayName": "Construction Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-development_class",
+          "name": "development_class",
+          "displayName": "Development Class",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-development_class_sign",
+          "name": "development_class_sign",
+          "displayName": "Development Class Sign",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-lot_size_freeform",
+          "name": "lot_size_freeform",
+          "displayName": "Lot Size Freeform",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-lot_size_sq_ft",
+          "name": "lot_size_sq_ft",
+          "displayName": "Lot Size Sq Ft",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-lot_depth_ft",
+          "name": "lot_depth_ft",
+          "displayName": "Lot Depth Ft",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-lot_width_ft",
+          "name": "lot_width_ft",
+          "displayName": "Lot Width Ft",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-year_built",
+          "name": "year_built",
+          "displayName": "Year Built",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-effective_year",
+          "name": "effective_year",
+          "displayName": "Effective Year",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-foundation_type_code",
+          "name": "foundation_type_code",
+          "displayName": "Foundation Type Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-foundation_type",
+          "name": "foundation_type",
+          "displayName": "Foundation Type",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-total_finished_area",
+          "name": "total_finished_area",
+          "displayName": "Total Finished Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-total_basement_area",
+          "name": "total_basement_area",
+          "displayName": "Total Basement Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-finished_basement_area",
+          "name": "finished_basement_area",
+          "displayName": "Finished Basement Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-covered_deck_area",
+          "name": "covered_deck_area",
+          "displayName": "Covered Deck Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-uncovered_deck_area",
+          "name": "uncovered_deck_area",
+          "displayName": "Uncovered Deck Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-storeys",
+          "name": "storeys",
+          "displayName": "Storeys",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bedrooms",
+          "name": "bedrooms",
+          "displayName": "Bedrooms",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bathrooms_4_piece",
+          "name": "bathrooms_4_piece",
+          "displayName": "Bathrooms 4 Piece",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bathrooms_3_piece",
+          "name": "bathrooms_3_piece",
+          "displayName": "Bathrooms 3 Piece",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-bathrooms_2_piece",
+          "name": "bathrooms_2_piece",
+          "displayName": "Bathrooms 2 Piece",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-multi_garages",
+          "name": "multi_garages",
+          "displayName": "Multi Garages",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-single_garages",
+          "name": "single_garages",
+          "displayName": "Single Garages",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-carports",
+          "name": "carports",
+          "displayName": "Carports",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-parking_tbc",
+          "name": "parking_tbc",
+          "displayName": "Parking (tbc)",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-has_pool",
+          "name": "has_pool",
+          "displayName": "Has Pool",
+          "valueType": "boolean",
+          "required": false
+        },
+        {
+          "id": "prop-other_buildings",
+          "name": "other_buildings",
+          "displayName": "Other Buildings",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-corner_lot",
+          "name": "corner_lot",
+          "displayName": "Corner Lot",
+          "valueType": "boolean",
+          "required": false
+        },
+        {
+          "id": "prop-waterfront_lot",
+          "name": "waterfront_lot",
+          "displayName": "Waterfront Lot",
+          "valueType": "boolean",
+          "required": false
+        },
+        {
+          "id": "prop-water_lot",
+          "name": "water_lot",
+          "displayName": "Water Lot",
+          "valueType": "boolean",
+          "required": false
+        },
+        {
+          "id": "prop-prime_view_lot",
+          "name": "prime_view_lot",
+          "displayName": "Prime View Lot",
+          "valueType": "boolean",
+          "required": false
+        },
+        {
+          "id": "prop-good_view_lot",
+          "name": "good_view_lot",
+          "displayName": "Good View Lot",
+          "valueType": "boolean",
+          "required": false
+        },
+        {
+          "id": "prop-fair_view_lot",
+          "name": "fair_view_lot",
+          "displayName": "Fair View Lot",
+          "valueType": "boolean",
+          "required": false
+        },
+        {
+          "id": "prop-is_cooperative",
+          "name": "is_cooperative",
+          "displayName": "Is Cooperative",
+          "valueType": "boolean",
+          "required": false
+        },
+        {
+          "id": "prop-exterior_type_code",
+          "name": "exterior_type_code",
+          "displayName": "Exterior Type Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-exterior_type_description",
+          "name": "exterior_type_description",
+          "displayName": "Exterior Type Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-alr_code",
+          "name": "alr_code",
+          "displayName": "Alr Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-alr_description",
+          "name": "alr_description",
+          "displayName": "Alr Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-fireplace_type",
+          "name": "fireplace_type",
+          "displayName": "Fireplace Type",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-fireplaces",
+          "name": "fireplaces",
+          "displayName": "Fireplaces",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-assessment_area_code",
+          "name": "assessment_area_code",
+          "displayName": "Assessment Area Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-assessment_area",
+          "name": "assessment_area",
+          "displayName": "Assessment Area",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-roll_number",
+          "name": "roll_number",
+          "displayName": "Roll Number",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-jurisdiction_code",
+          "name": "jurisdiction_code",
+          "displayName": "Jurisdiction Code",
+          "valueType": "url",
+          "required": false
+        },
+        {
+          "id": "prop-jurisdiction",
+          "name": "jurisdiction",
+          "displayName": "Jurisdiction",
+          "valueType": "url",
+          "required": false
+        },
+        {
+          "id": "prop-neighbourhood_code",
+          "name": "neighbourhood_code",
+          "displayName": "Neighbourhood Code",
+          "valueType": "number",
+          "required": false
+        },
+        {
+          "id": "prop-neighbourhood",
+          "name": "neighbourhood",
+          "displayName": "Neighbourhood",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_lot",
+          "name": "legal_lot",
+          "displayName": "Legal Lot",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_block",
+          "name": "legal_block",
+          "displayName": "Legal Block",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_section",
+          "name": "legal_section",
+          "displayName": "Legal Section",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_township",
+          "name": "legal_township",
+          "displayName": "Legal Township",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_range",
+          "name": "legal_range",
+          "displayName": "Legal Range",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_meridian",
+          "name": "legal_meridian",
+          "displayName": "Legal Meridian",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_plan",
+          "name": "legal_plan",
+          "displayName": "Legal Plan",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_district_lot",
+          "name": "legal_district_lot",
+          "displayName": "Legal District Lot",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_land_district",
+          "name": "legal_land_district",
+          "displayName": "Legal Land District",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-legal_description",
+          "name": "legal_description",
+          "displayName": "Legal Description",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-last_total_assessment_amt_tbc",
+          "name": "last_total_assessment_amt_tbc",
+          "displayName": "Last_total_assessment_amt (tbc)",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-current_assessment_value",
+          "name": "current_assessment_value",
+          "displayName": "Current Assessment Value",
+          "valueType": "currency",
+          "required": false
+        },
+        {
+          "id": "prop-assessment_date",
+          "name": "assessment_date",
+          "displayName": "Assessment Date",
+          "valueType": "date",
+          "required": false
+        },
+        {
+          "id": "prop-assessed_lot_size",
+          "name": "assessed_lot_size",
+          "displayName": "Assessed Lot Size",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-historical_assessment_values",
+          "name": "historical_assessment_values",
+          "displayName": "Historical Assessment Values",
+          "valueType": "currency",
+          "required": false
+        },
+        {
+          "id": "prop-sales_history_table",
+          "name": "sales_history_table",
+          "displayName": "Sales History Table",
+          "valueType": "array",
+          "required": false
+        },
+        {
+          "id": "prop-owner_address",
+          "name": "owner_address",
+          "displayName": "Owner Address",
+          "valueType": "string",
+          "required": false
+        }
+      ],
+      "sources": [
+        {
+          "entityId": "copa-landcor",
+          "entityName": "Landcor Data Corporation",
+          "regionsCovered": [
+            "BC"
+          ],
+          "addedAt": "2025-12-09T01:21:07.787Z"
+        }
+      ],
+      "createdAt": "2025-12-09T01:21:07.787Z",
+      "updatedAt": "2025-12-09T01:21:07.787Z"
+    },
+    {
+      "id": "property-public-data",
+      "name": "Property Public Data []",
+      "description": "Data attributes for property public data []",
+      "category": "property",
+      "properties": [
+        {
+          "id": "prop-confidence_score",
+          "name": "confidence_score",
+          "displayName": "Confidence Score",
+          "valueType": "string",
+          "required": false
+        },
+        {
+          "id": "prop-low_range_value",
+          "name": "low_range_value",
+          "displayName": "Low Range Value",
+          "valueType": "currency",
+          "required": false
+        },
+        {
+          "id": "prop-high_range_value",
+          "name": "high_range_value",
+          "displayName": "High Range Value",
+          "valueType": "currency",
+          "required": false
+        }
+      ],
+      "sources": [
+        {
+          "entityId": "copa-landcor",
+          "entityName": "Landcor Data Corporation",
+          "regionsCovered": [
+            "BC"
+          ],
+          "addedAt": "2025-12-09T01:21:07.787Z"
+        }
+      ],
+      "createdAt": "2025-12-09T01:21:07.787Z",
+      "updatedAt": "2025-12-09T01:21:07.787Z"
+    }
+  ]
+}

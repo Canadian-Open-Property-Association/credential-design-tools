@@ -938,12 +938,21 @@ router.get('/export', (req, res) => {
 
 // Data file path for vocabulary-first data types
 const getV2DataTypesFile = () => path.join(getDataDir(), 'v2-data-types.json');
+const getV2SeedDataPath = () => path.join(__dirname, '../data/v2-data-types.json');
 
 // Initialize v2 data if it doesn't exist
 const initializeV2Data = () => {
   const v2File = getV2DataTypesFile();
   if (!fs.existsSync(v2File)) {
-    fs.writeFileSync(v2File, JSON.stringify({ dataTypes: [] }, null, 2));
+    const seedPath = getV2SeedDataPath();
+    if (fs.existsSync(seedPath)) {
+      console.log('Initializing v2 data types from seed data...');
+      const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
+      fs.writeFileSync(v2File, JSON.stringify(seedData, null, 2));
+      console.log(`V2 data types initialized with ${seedData.dataTypes?.length || 0} data types`);
+    } else {
+      fs.writeFileSync(v2File, JSON.stringify({ dataTypes: [] }, null, 2));
+    }
   }
 };
 
