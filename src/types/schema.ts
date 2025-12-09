@@ -104,6 +104,15 @@ export interface SchemaMetadata {
   category?: string;             // Category slug (e.g., "property", "identity", "badge")
   credentialName?: string;       // Credential name slug (e.g., "home-credential")
 
+  // VCT Reference (for SD-JWT mode) - links schema to VCT definition
+  vctUri?: string;               // Selected VCT URI from library
+  vctName?: string;              // Display name of selected VCT
+
+  // Default Issuer (for credential templates)
+  defaultIssuerEntityId?: string;  // Entity ID (e.g., "copa-cornerstone")
+  defaultIssuerUri?: string;       // Resolved issuer URI (from entity DID or canonical URL)
+  defaultIssuerName?: string;      // Display name of issuer entity
+
   // Standard claims configuration (for SD-JWT VC)
   standardClaims: StandardClaimsConfig;
 
