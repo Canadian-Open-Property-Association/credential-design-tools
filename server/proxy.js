@@ -149,7 +149,14 @@ app.use('/api/entities', entitiesRouter);
 
 // Swagger API documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs, {
-  customCss: '.swagger-ui .topbar { display: none }',
+  customCss: `
+    .swagger-ui .topbar { display: none }
+    .swagger-ui { background: #fafafa }
+    .swagger-ui .info .title { color: #333 }
+    .swagger-ui .download-url-wrapper { display: none }
+    .swagger-ui .scheme-container { background: #fafafa; box-shadow: none }
+    .swagger-ui .opblock-tag { border-bottom: 1px solid #e0e0e0 }
+  `,
   customSiteTitle: 'COPA API Documentation',
 }));
 app.get('/api/docs.json', (req, res) => res.json(specs));

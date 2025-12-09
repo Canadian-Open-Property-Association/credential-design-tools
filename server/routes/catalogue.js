@@ -932,43 +932,43 @@ router.get('/export', (req, res) => {
 });
 
 // ============================================
-// V2 API - Vocabulary-First Design
+// Data Catalogue API - Vocabulary-First Design
 // DataTypes are the primary concept, with properties and sources
 // ============================================
 
 // Data file path for vocabulary-first data types
-const getV2DataTypesFile = () => path.join(getDataDir(), 'v2-data-types.json');
-const getV2SeedDataPath = () => path.join(__dirname, '../data/v2-data-types.json');
+const getDataTypesFile = () => path.join(getDataDir(), 'data-types.json');
+const getSeedDataPath = () => path.join(__dirname, '../data/data-types.json');
 
-// Initialize v2 data if it doesn't exist
-const initializeV2Data = () => {
-  const v2File = getV2DataTypesFile();
-  if (!fs.existsSync(v2File)) {
-    const seedPath = getV2SeedDataPath();
+// Initialize data if it doesn't exist
+const initializeData = () => {
+  const dataFile = getDataTypesFile();
+  if (!fs.existsSync(dataFile)) {
+    const seedPath = getSeedDataPath();
     if (fs.existsSync(seedPath)) {
-      console.log('Initializing v2 data types from seed data...');
+      console.log('Initializing data types from seed data...');
       const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
-      fs.writeFileSync(v2File, JSON.stringify(seedData, null, 2));
-      console.log(`V2 data types initialized with ${seedData.dataTypes?.length || 0} data types`);
+      fs.writeFileSync(dataFile, JSON.stringify(seedData, null, 2));
+      console.log(`Data types initialized with ${seedData.dataTypes?.length || 0} data types`);
     } else {
-      fs.writeFileSync(v2File, JSON.stringify({ dataTypes: [] }, null, 2));
+      fs.writeFileSync(dataFile, JSON.stringify({ dataTypes: [] }, null, 2));
     }
   }
 };
 
-// Load/Save v2 data types
-const loadV2DataTypes = () => {
-  initializeV2Data();
-  const data = JSON.parse(fs.readFileSync(getV2DataTypesFile(), 'utf-8'));
+// Load/Save data types
+const loadDataTypes = () => {
+  initializeData();
+  const data = JSON.parse(fs.readFileSync(getDataTypesFile(), 'utf-8'));
   return data.dataTypes || [];
 };
 
-const saveV2DataTypes = (dataTypes) => {
-  fs.writeFileSync(getV2DataTypesFile(), JSON.stringify({ dataTypes }, null, 2));
+const saveDataTypes = (dataTypes) => {
+  fs.writeFileSync(getDataTypesFile(), JSON.stringify({ dataTypes }, null, 2));
 };
 
 // Generate slug-style ID
-const generateV2Id = (name) => {
+const generateId = (name) => {
   return name
     .toLowerCase()
     .replace(/\s+/g, '-')
@@ -977,13 +977,13 @@ const generateV2Id = (name) => {
     .replace(/^-|-$/g, '');
 };
 
-// -------------------- V2 Data Types --------------------
+// -------------------- Data Types --------------------
 
 // List all data types (vocabulary-first)
 router.get('/data-types', (req, res) => {
   try {
     const { category, search } = req.query;
-    let dataTypes = loadV2DataTypes();
+    let dataTypes = loadDataTypes();
 
     // Filter by category
     if (category) {
@@ -1001,7 +1001,7 @@ router.get('/data-types', (req, res) => {
 
     res.json(dataTypes);
   } catch (error) {
-    console.error('Error listing v2 data types:', error);
+    console.error('Error listing data types:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1010,7 +1010,7 @@ router.get('/data-types', (req, res) => {
 router.get('/data-types/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dataType = dataTypes.find(dt => dt.id === id);
 
     if (!dataType) {
@@ -1019,7 +1019,7 @@ router.get('/data-types/:id', (req, res) => {
 
     res.json(dataType);
   } catch (error) {
-    console.error('Error getting v2 data type:', error);
+    console.error('Error getting data type:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1027,11 +1027,11 @@ router.get('/data-types/:id', (req, res) => {
 // Create a new data type
 router.post('/data-types', requireAuth, (req, res) => {
   try {
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const now = new Date().toISOString();
 
     const newDataType = {
-      id: req.body.id || generateV2Id(req.body.name),
+      id: req.body.id || generateId(req.body.name),
       name: req.body.name,
       description: req.body.description || '',
       category: req.body.category || 'other',
@@ -1057,11 +1057,11 @@ router.post('/data-types', requireAuth, (req, res) => {
     }
 
     dataTypes.push(newDataType);
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
 
     res.json(newDataType);
   } catch (error) {
-    console.error('Error creating v2 data type:', error);
+    console.error('Error creating data type:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1070,7 +1070,7 @@ router.post('/data-types', requireAuth, (req, res) => {
 router.put('/data-types/:id', requireAuth, (req, res) => {
   try {
     const { id } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const index = dataTypes.findIndex(dt => dt.id === id);
 
     if (index === -1) {
@@ -1094,11 +1094,11 @@ router.put('/data-types/:id', requireAuth, (req, res) => {
     };
 
     dataTypes[index] = updatedDataType;
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
 
     res.json(updatedDataType);
   } catch (error) {
-    console.error('Error updating v2 data type:', error);
+    console.error('Error updating data type:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1107,7 +1107,7 @@ router.put('/data-types/:id', requireAuth, (req, res) => {
 router.delete('/data-types/:id', requireAuth, (req, res) => {
   try {
     const { id } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
 
     const index = dataTypes.findIndex(dt => dt.id === id);
     if (index === -1) {
@@ -1115,22 +1115,22 @@ router.delete('/data-types/:id', requireAuth, (req, res) => {
     }
 
     dataTypes.splice(index, 1);
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting v2 data type:', error);
+    console.error('Error deleting data type:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// -------------------- V2 Properties (nested in DataType) --------------------
+// -------------------- Properties (nested in DataType) --------------------
 
 // Add a property to a data type
 router.post('/data-types/:dataTypeId/properties', requireAuth, (req, res) => {
   try {
     const { dataTypeId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const index = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (index === -1) {
@@ -1166,7 +1166,7 @@ router.post('/data-types/:dataTypeId/properties', requireAuth, (req, res) => {
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[index]);
   } catch (error) {
     console.error('Error adding property:', error);
@@ -1178,7 +1178,7 @@ router.post('/data-types/:dataTypeId/properties', requireAuth, (req, res) => {
 router.put('/data-types/:dataTypeId/properties/:propertyId', requireAuth, (req, res) => {
   try {
     const { dataTypeId, propertyId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1210,7 +1210,7 @@ router.put('/data-types/:dataTypeId/properties/:propertyId', requireAuth, (req, 
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[dtIndex]);
   } catch (error) {
     console.error('Error updating property:', error);
@@ -1218,13 +1218,13 @@ router.put('/data-types/:dataTypeId/properties/:propertyId', requireAuth, (req, 
   }
 });
 
-// -------------------- V2 Property Provider Mappings --------------------
+// -------------------- Property Provider Mappings --------------------
 
 // Add a provider mapping to a property
 router.post('/data-types/:dataTypeId/properties/:propertyId/mappings', requireAuth, (req, res) => {
   try {
     const { dataTypeId, propertyId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1272,7 +1272,7 @@ router.post('/data-types/:dataTypeId/properties/:propertyId/mappings', requireAu
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[dtIndex]);
   } catch (error) {
     console.error('Error adding provider mapping:', error);
@@ -1284,7 +1284,7 @@ router.post('/data-types/:dataTypeId/properties/:propertyId/mappings', requireAu
 router.put('/data-types/:dataTypeId/properties/:propertyId/mappings/:entityId', requireAuth, (req, res) => {
   try {
     const { dataTypeId, propertyId, entityId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1317,7 +1317,7 @@ router.put('/data-types/:dataTypeId/properties/:propertyId/mappings/:entityId', 
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[dtIndex]);
   } catch (error) {
     console.error('Error updating provider mapping:', error);
@@ -1329,7 +1329,7 @@ router.put('/data-types/:dataTypeId/properties/:propertyId/mappings/:entityId', 
 router.delete('/data-types/:dataTypeId/properties/:propertyId/mappings/:entityId', requireAuth, (req, res) => {
   try {
     const { dataTypeId, propertyId, entityId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1355,7 +1355,7 @@ router.delete('/data-types/:dataTypeId/properties/:propertyId/mappings/:entityId
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[dtIndex]);
   } catch (error) {
     console.error('Error removing provider mapping:', error);
@@ -1368,7 +1368,7 @@ router.post('/data-types/:dataTypeId/properties/bulk-add-mapping', requireAuth, 
   try {
     const { dataTypeId } = req.params;
     const { propertyIds, mapping } = req.body;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1428,7 +1428,7 @@ router.post('/data-types/:dataTypeId/properties/bulk-add-mapping', requireAuth, 
     dataTypes[dtIndex].updatedAt = now;
     dataTypes[dtIndex].updatedBy = userRef;
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
 
     res.json({
       success: true,
@@ -1447,7 +1447,7 @@ router.post('/data-types/:dataTypeId/properties/bulk-remove-mapping', requireAut
   try {
     const { dataTypeId } = req.params;
     const { propertyIds, entityId } = req.body;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1493,7 +1493,7 @@ router.post('/data-types/:dataTypeId/properties/bulk-remove-mapping', requireAut
     dataTypes[dtIndex].updatedAt = now;
     dataTypes[dtIndex].updatedBy = userRef;
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
 
     res.json({
       success: true,
@@ -1511,7 +1511,7 @@ router.post('/data-types/:dataTypeId/properties/bulk-remove-mapping', requireAut
 router.delete('/data-types/:dataTypeId/properties/:propertyId', requireAuth, (req, res) => {
   try {
     const { dataTypeId, propertyId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1531,7 +1531,7 @@ router.delete('/data-types/:dataTypeId/properties/:propertyId', requireAuth, (re
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[dtIndex]);
   } catch (error) {
     console.error('Error deleting property:', error);
@@ -1539,13 +1539,13 @@ router.delete('/data-types/:dataTypeId/properties/:propertyId', requireAuth, (re
   }
 });
 
-// -------------------- V2 Sources (link to entities) --------------------
+// -------------------- Sources (link to entities) --------------------
 
 // Add a source (entity) to a data type
 router.post('/data-types/:dataTypeId/sources', requireAuth, (req, res) => {
   try {
     const { dataTypeId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const index = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (index === -1) {
@@ -1584,7 +1584,7 @@ router.post('/data-types/:dataTypeId/sources', requireAuth, (req, res) => {
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[index]);
   } catch (error) {
     console.error('Error adding source:', error);
@@ -1596,7 +1596,7 @@ router.post('/data-types/:dataTypeId/sources', requireAuth, (req, res) => {
 router.put('/data-types/:dataTypeId/sources/:entityId', requireAuth, (req, res) => {
   try {
     const { dataTypeId, entityId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1624,7 +1624,7 @@ router.put('/data-types/:dataTypeId/sources/:entityId', requireAuth, (req, res) 
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[dtIndex]);
   } catch (error) {
     console.error('Error updating source:', error);
@@ -1636,7 +1636,7 @@ router.put('/data-types/:dataTypeId/sources/:entityId', requireAuth, (req, res) 
 router.delete('/data-types/:dataTypeId/sources/:entityId', requireAuth, (req, res) => {
   try {
     const { dataTypeId, entityId } = req.params;
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const dtIndex = dataTypes.findIndex(dt => dt.id === dataTypeId);
 
     if (dtIndex === -1) {
@@ -1656,7 +1656,7 @@ router.delete('/data-types/:dataTypeId/sources/:entityId', requireAuth, (req, re
       name: req.session.user.name || undefined,
     };
 
-    saveV2DataTypes(dataTypes);
+    saveDataTypes(dataTypes);
     res.json(dataTypes[dtIndex]);
   } catch (error) {
     console.error('Error removing source:', error);
@@ -1664,7 +1664,7 @@ router.delete('/data-types/:dataTypeId/sources/:entityId', requireAuth, (req, re
   }
 });
 
-// -------------------- V2 Categories --------------------
+// -------------------- Categories --------------------
 
 // List all categories
 router.get('/categories', (req, res) => {
@@ -1672,7 +1672,7 @@ router.get('/categories', (req, res) => {
     const categories = loadCategories();
     res.json(categories);
   } catch (error) {
-    console.error('Error listing v2 categories:', error);
+    console.error('Error listing categories:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1705,12 +1705,12 @@ router.post('/categories', requireAuth, (req, res) => {
 
     res.status(201).json(newCategory);
   } catch (error) {
-    console.error('Error creating v2 category:', error);
+    console.error('Error creating category:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// -------------------- V2 Search --------------------
+// -------------------- Search --------------------
 
 // Search across data types and properties
 router.get('/search', (req, res) => {
@@ -1721,7 +1721,7 @@ router.get('/search', (req, res) => {
     }
 
     const query = q.toLowerCase();
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
 
     const matchedDataTypes = dataTypes.filter(dt =>
       dt.name.toLowerCase().includes(query) ||
@@ -1735,17 +1735,17 @@ router.get('/search', (req, res) => {
 
     res.json({ dataTypes: matchedDataTypes });
   } catch (error) {
-    console.error('Error searching v2 catalogue:', error);
+    console.error('Error searching catalogue:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// -------------------- V2 Export --------------------
+// -------------------- Export --------------------
 
-// Export all v2 data
+// Export all catalogue data
 router.get('/export', (req, res) => {
   try {
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const categories = loadCategories();
 
     res.json({
@@ -1754,17 +1754,17 @@ router.get('/export', (req, res) => {
       dataTypes,
     });
   } catch (error) {
-    console.error('Error exporting v2 catalogue:', error);
+    console.error('Error exporting catalogue:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// -------------------- V2 Stats --------------------
+// -------------------- Stats --------------------
 
 // Get catalogue statistics
 router.get('/stats', (req, res) => {
   try {
-    const dataTypes = loadV2DataTypes();
+    const dataTypes = loadDataTypes();
     const categories = loadCategories();
 
     const totalProperties = dataTypes.reduce((sum, dt) => sum + dt.properties.length, 0);
@@ -1784,7 +1784,7 @@ router.get('/stats', (req, res) => {
       categoryCounts,
     });
   } catch (error) {
-    console.error('Error getting v2 stats:', error);
+    console.error('Error getting stats:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1793,15 +1793,15 @@ router.get('/stats', (req, res) => {
 // Admin API (for seeding new data)
 // ============================================
 
-// Migrate legacy data to v2 vocabulary-first structure
+// Migrate legacy data to vocabulary-first structure
 // This transforms furnisher-centric data to data-type-centric structure
-router.post('/admin/migrate-to-v2', requireAuth, (req, res) => {
+router.post('/admin/migrate-legacy', requireAuth, (req, res) => {
   try {
     const legacyDataTypes = loadDataTypes();
     const legacyAttributes = loadAttributes();
     const furnishers = loadFurnishers();
     const configs = loadDataTypeConfigs();
-    const existingV2DataTypes = loadV2DataTypes();
+    const existingDataTypes = loadDataTypes();
 
     if (legacyDataTypes.length === 0) {
       return res.json({
@@ -1812,7 +1812,7 @@ router.post('/admin/migrate-to-v2', requireAuth, (req, res) => {
     }
 
     const now = new Date().toISOString();
-    const v2DataTypes = [...existingV2DataTypes];
+    const newDataTypes = [...existingDataTypes];
     let migratedTypes = 0;
     let migratedProperties = 0;
     let migratedSources = 0;
@@ -1836,11 +1836,11 @@ router.post('/admin/migrate-to-v2', requireAuth, (req, res) => {
       typeGroups.get(groupKey).furnisherDataTypes.push(ldt);
     }
 
-    // Convert grouped data to v2 format
+    // Convert grouped data to new format
     for (const [groupKey, group] of typeGroups) {
-      // Skip if already exists in v2
-      if (v2DataTypes.some(dt => dt.id === groupKey)) {
-        console.log(`Skipping existing v2 data type: ${groupKey}`);
+      // Skip if already exists
+      if (newDataTypes.some(dt => dt.id === groupKey)) {
+        console.log(`Skipping existing data type: ${groupKey}`);
         continue;
       }
 
@@ -1893,8 +1893,8 @@ router.post('/admin/migrate-to-v2', requireAuth, (req, res) => {
       }));
       migratedProperties += properties.length;
 
-      // Create v2 data type
-      const v2DataType = {
+      // Create data type
+      const newDataType = {
         id: groupKey,
         name: group.name,
         description: group.description || config?.description || '',
@@ -1911,12 +1911,12 @@ router.post('/admin/migrate-to-v2', requireAuth, (req, res) => {
         },
       };
 
-      v2DataTypes.push(v2DataType);
+      newDataTypes.push(newDataType);
       migratedTypes++;
     }
 
     // Save migrated data
-    saveV2DataTypes(v2DataTypes);
+    saveDataTypes(newDataTypes);
 
     console.log(`Migration complete: ${migratedTypes} types, ${migratedProperties} properties, ${migratedSources} sources`);
 
@@ -1929,7 +1929,7 @@ router.post('/admin/migrate-to-v2', requireAuth, (req, res) => {
         sources: migratedSources,
       },
       details: {
-        dataTypes: v2DataTypes.slice(-migratedTypes).map(dt => ({
+        dataTypes: newDataTypes.slice(-migratedTypes).map(dt => ({
           id: dt.id,
           name: dt.name,
           propertyCount: dt.properties.length,
@@ -1938,7 +1938,7 @@ router.post('/admin/migrate-to-v2', requireAuth, (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error migrating to v2:', error);
+    console.error('Error migrating legacy data:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1968,8 +1968,8 @@ function mapLegacyDataType(legacyType) {
   return mapping[legacyType?.toLowerCase()] || 'string';
 }
 
-// Force reseed v2 data types from seed file
-router.post('/admin/reseed-v2', (req, res) => {
+// Force reseed data types from seed file
+router.post('/admin/reseed', (req, res) => {
   try {
     const { adminSecret } = req.body;
 
@@ -1979,27 +1979,27 @@ router.post('/admin/reseed-v2', (req, res) => {
       return res.status(401).json({ error: 'Invalid admin secret' });
     }
 
-    const seedPath = getV2SeedDataPath();
+    const seedPath = getSeedDataPath();
     if (!fs.existsSync(seedPath)) {
-      return res.status(404).json({ error: 'V2 seed data file not found' });
+      return res.status(404).json({ error: 'Seed data file not found' });
     }
 
     const seedData = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
-    const v2File = getV2DataTypesFile();
+    const dataFile = getDataTypesFile();
 
     // Force overwrite with seed data
-    fs.writeFileSync(v2File, JSON.stringify(seedData, null, 2));
+    fs.writeFileSync(dataFile, JSON.stringify(seedData, null, 2));
 
-    console.log(`V2 data types reseeded with ${seedData.dataTypes?.length || 0} data types`);
+    console.log(`Data types reseeded with ${seedData.dataTypes?.length || 0} data types`);
 
     res.json({
       success: true,
-      message: `Reseeded v2 data types`,
+      message: `Reseeded data types`,
       dataTypes: seedData.dataTypes?.length || 0,
       properties: seedData.dataTypes?.reduce((sum, dt) => sum + (dt.properties?.length || 0), 0) || 0,
     });
   } catch (error) {
-    console.error('Error reseeding v2 data:', error);
+    console.error('Error reseeding data:', error);
     res.status(500).json({ error: error.message });
   }
 });
