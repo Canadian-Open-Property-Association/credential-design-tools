@@ -3,6 +3,7 @@ import { useDictionaryStore } from '../../../store/dictionaryStore';
 import type { VocabProperty } from '../../../types/dictionary';
 import PropertyForm from './PropertyForm';
 import JsonPreviewModal from './JsonPreviewModal';
+import MovePropertiesModal from './MovePropertiesModal';
 
 interface VocabTypeDetailProps {
   onEdit: () => void;
@@ -39,6 +40,8 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
   const [showPropertyForm, setShowPropertyForm] = useState(false);
   const [editingProperty, setEditingProperty] = useState<VocabProperty | null>(null);
   const [previewProperty, setPreviewProperty] = useState<VocabProperty | null>(null);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
+  const [showMoveModal, setShowMoveModal] = useState(false);
 
   if (!selectedVocabType) return null;
 
@@ -49,6 +52,35 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
   };
 
   const properties = selectedVocabType.properties || [];
+
+  const togglePropertySelection = (propertyId: string) => {
+    setSelectedPropertyIds(prev => {
+      const next = new Set(prev);
+      if (next.has(propertyId)) {
+        next.delete(propertyId);
+      } else {
+        next.add(propertyId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedPropertyIds.size === properties.length) {
+      setSelectedPropertyIds(new Set());
+    } else {
+      setSelectedPropertyIds(new Set(properties.map(p => p.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedPropertyIds(new Set());
+  };
+
+  const handleMoveComplete = () => {
+    setShowMoveModal(false);
+    clearSelection();
+  };
 
   return (
     <div className="p-6">
@@ -100,6 +132,32 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
           </button>
         </div>
 
+        {/* Bulk Action Bar */}
+        {selectedPropertyIds.size > 0 && (
+          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-blue-800">
+                {selectedPropertyIds.size} propert{selectedPropertyIds.size === 1 ? 'y' : 'ies'} selected
+              </span>
+              <button
+                onClick={clearSelection}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Clear selection
+              </button>
+            </div>
+            <button
+              onClick={() => setShowMoveModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+              Move to Vocab Type
+            </button>
+          </div>
+        )}
+
         {properties.length === 0 ? (
           <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500 text-sm">
             No properties defined yet
@@ -109,6 +167,14 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
             <table className="w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-2 py-2 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedPropertyIds.size === properties.length && properties.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Required</th>
@@ -120,9 +186,17 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
                 {properties.map((prop) => (
                   <tr
                     key={prop.id}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className={`hover:bg-gray-50 cursor-pointer ${selectedPropertyIds.has(prop.id) ? 'bg-blue-50' : ''}`}
                     onClick={() => setPreviewProperty(prop)}
                   >
+                    <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedPropertyIds.has(prop.id)}
+                        onChange={() => togglePropertySelection(prop.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="px-4 py-2">
                       <div>
                         <span className="font-medium text-gray-800">{prop.displayName}</span>
@@ -246,6 +320,17 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
           property={previewProperty}
           vocabTypeName={selectedVocabType.name}
           onClose={() => setPreviewProperty(null)}
+        />
+      )}
+
+      {/* Move Properties Modal */}
+      {showMoveModal && (
+        <MovePropertiesModal
+          sourceVocabTypeId={selectedVocabType.id}
+          sourceVocabTypeName={selectedVocabType.name}
+          propertyIds={Array.from(selectedPropertyIds)}
+          onClose={() => setShowMoveModal(false)}
+          onComplete={handleMoveComplete}
         />
       )}
     </div>

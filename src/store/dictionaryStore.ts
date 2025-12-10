@@ -191,6 +191,7 @@ interface DictionaryState {
   addProperty: (vocabTypeId: string, property: Partial<VocabProperty>) => Promise<void>;
   updateProperty: (vocabTypeId: string, propertyId: string, updates: Partial<VocabProperty>) => Promise<void>;
   deleteProperty: (vocabTypeId: string, propertyId: string) => Promise<void>;
+  moveProperties: (sourceVocabTypeId: string, propertyIds: string[], targetVocabTypeId: string) => Promise<void>;
 
   // Category CRUD
   createCategory: (category: Partial<VocabCategory>) => Promise<VocabCategory>;
@@ -310,6 +311,35 @@ export const useDictionaryStore = create<DictionaryState>((set, get) => ({
     const updated = await dictionaryApi.deleteProperty(vocabTypeId, propertyId);
     set({ selectedVocabType: updated });
     await get().fetchVocabTypes();
+  },
+
+  // Move properties from one vocab type to another
+  moveProperties: async (sourceVocabTypeId, propertyIds, targetVocabTypeId) => {
+    // Get the source vocab type to find the properties
+    const sourceVocabType = get().vocabTypes.find(vt => vt.id === sourceVocabTypeId);
+    if (!sourceVocabType) throw new Error('Source vocab type not found');
+
+    // Get properties to move
+    const propertiesToMove = sourceVocabType.properties.filter(p => propertyIds.includes(p.id));
+    if (propertiesToMove.length === 0) throw new Error('No properties to move');
+
+    // Add properties to target (without id so new IDs are generated)
+    for (const prop of propertiesToMove) {
+      const { id, createdAt, updatedAt, ...propData } = prop;
+      await dictionaryApi.addProperty(targetVocabTypeId, propData);
+    }
+
+    // Remove properties from source
+    for (const propId of propertyIds) {
+      await dictionaryApi.deleteProperty(sourceVocabTypeId, propId);
+    }
+
+    // Refresh data
+    await get().fetchVocabTypes();
+    // Update selected vocab type if it was the source
+    if (get().selectedVocabType?.id === sourceVocabTypeId) {
+      await get().selectVocabType(sourceVocabTypeId);
+    }
   },
 
   // Create category
