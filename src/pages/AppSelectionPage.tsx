@@ -13,7 +13,7 @@ interface AppCard {
 }
 
 const RECENT_APPS_KEY = 'copa-apps-recent-apps';
-const MAX_RECENT_APPS = 2;
+const MAX_RECENT_APPS = 3;
 
 const apps: AppCard[] = [
   {
