@@ -10,17 +10,19 @@ const VCT_FOLDER_PATH = process.env.VCT_FOLDER_PATH || 'credentials/branding';
 const SCHEMA_FOLDER_PATH = process.env.SCHEMA_FOLDER_PATH || 'credentials/schemas';
 const CONTEXT_FOLDER_PATH = process.env.CONTEXT_FOLDER_PATH || 'credentials/contexts';
 const ENTITY_FOLDER_PATH = process.env.ENTITY_FOLDER_PATH || 'entities';
+const VOCAB_FOLDER_PATH = process.env.VOCAB_FOLDER_PATH || 'credentials/vocab';
 const BASE_URL = process.env.BASE_URL || 'https://openpropertyassociation.ca';
 // Base branch for PRs - if set, use this instead of repo's default branch
 const GITHUB_BASE_BRANCH = process.env.GITHUB_BASE_BRANCH || null;
 
-// Get configuration (base URLs for VCT, Schema, Context, and Entities)
+// Get configuration (base URLs for VCT, Schema, Context, Entities, and Vocab)
 router.get('/config', requireAuth, (req, res) => {
   res.json({
     vctBaseUrl: `${BASE_URL}/credentials/branding/`,
     schemaBaseUrl: `${BASE_URL}/credentials/schemas/`,
     contextBaseUrl: `${BASE_URL}/credentials/contexts/`,
     entityBaseUrl: `${BASE_URL}/entities/`,
+    vocabBaseUrl: `${BASE_URL}/${VOCAB_FOLDER_PATH}/`,
   });
 });
 
@@ -596,6 +598,137 @@ Created by @${user.login} using the [COPA Apps](https://apps.openpropertyassocia
   } catch (error) {
     console.error('Error uploading entity logo:', error);
     res.status(500).json({ error: error.message || 'Failed to upload entity logo' });
+  }
+});
+
+// ============================================
+// Vocabulary Management Endpoints
+// ============================================
+
+// Save vocabulary types to repository (creates branch + PR with multiple files)
+router.post('/vocab', requireAuth, async (req, res) => {
+  try {
+    const { vocabTypes, title, description } = req.body;
+
+    if (!vocabTypes || !Array.isArray(vocabTypes) || vocabTypes.length === 0) {
+      return res.status(400).json({ error: 'vocabTypes array is required' });
+    }
+
+    const octokit = getOctokit(req);
+    const user = req.session.user;
+
+    // Determine the base branch for the PR
+    let baseBranch = GITHUB_BASE_BRANCH;
+    if (!baseBranch) {
+      const { data: repo } = await octokit.rest.repos.get({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+      });
+      baseBranch = repo.default_branch;
+    }
+
+    // Get the latest commit SHA of the base branch
+    const { data: ref } = await octokit.rest.git.getRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `heads/${baseBranch}`,
+    });
+    const baseSha = ref.object.sha;
+
+    // Get the tree of the base commit
+    const { data: baseCommit } = await octokit.rest.git.getCommit({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      commit_sha: baseSha,
+    });
+
+    // Create blobs for each vocab type file
+    const treeItems = [];
+    for (const vocabType of vocabTypes) {
+      const fileContent = JSON.stringify(vocabType, null, 2);
+      const { data: blob } = await octokit.rest.git.createBlob({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+        content: fileContent,
+        encoding: 'utf-8',
+      });
+
+      treeItems.push({
+        path: `${VOCAB_FOLDER_PATH}/${vocabType.id}.json`,
+        mode: '100644',
+        type: 'blob',
+        sha: blob.sha,
+      });
+    }
+
+    // Create a new tree with the new files
+    const { data: newTree } = await octokit.rest.git.createTree({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      base_tree: baseCommit.tree.sha,
+      tree: treeItems,
+    });
+
+    // Create the commit
+    const typeCount = vocabTypes.length;
+    const typeList = vocabTypes.map((vt) => vt.name).join(', ');
+    const commitMessage =
+      typeCount === 1
+        ? `Add vocabulary type: ${vocabTypes[0].name}`
+        : `Add ${typeCount} vocabulary types`;
+
+    const { data: newCommit } = await octokit.rest.git.createCommit({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      message: commitMessage,
+      tree: newTree.sha,
+      parents: [baseSha],
+    });
+
+    // Create a new branch pointing to the new commit
+    const timestamp = Date.now();
+    const branchName = `vocab/add-${typeCount}-types-${timestamp}`;
+
+    await octokit.rest.git.createRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `refs/heads/${branchName}`,
+      sha: newCommit.sha,
+    });
+
+    // Create a pull request
+    const prTitle = title || (typeCount === 1 ? `Add vocabulary type: ${vocabTypes[0].name}` : `Add ${typeCount} vocabulary types`);
+    const prBody =
+      description ||
+      `This PR adds ${typeCount === 1 ? 'a vocabulary type' : `${typeCount} vocabulary types`} to the governance repository.
+
+**Vocabulary types:**
+${vocabTypes.map((vt) => `- \`${vt.id}\`: ${vt.name}`).join('\n')}
+
+Created by @${user.login} using the [COPA Apps](https://apps.openpropertyassociation.ca).`;
+
+    const { data: pr } = await octokit.rest.pulls.create({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      title: prTitle,
+      body: prBody,
+      head: branchName,
+      base: baseBranch,
+    });
+
+    res.json({
+      success: true,
+      pr: {
+        number: pr.number,
+        url: pr.html_url,
+        title: pr.title,
+      },
+      branch: branchName,
+      files: vocabTypes.map((vt) => `${VOCAB_FOLDER_PATH}/${vt.id}.json`),
+    });
+  } catch (error) {
+    console.error('Error creating Vocab PR:', error);
+    res.status(500).json({ error: error.message || 'Failed to create vocabulary pull request' });
   }
 });
 

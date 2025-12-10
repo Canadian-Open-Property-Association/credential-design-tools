@@ -88,12 +88,9 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">{selectedVocabType.name}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-              {selectedVocabType.category || 'Uncategorized'}
-            </span>
-            <span className="text-xs text-gray-500">
-              ID: {selectedVocabType.id}
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-xs text-gray-500 font-mono">
+              governance/credentials/vocab/{selectedVocabType.id}.json
             </span>
           </div>
           {selectedVocabType.description && (

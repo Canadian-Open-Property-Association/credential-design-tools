@@ -4,6 +4,7 @@ import VocabTypeList from './components/VocabTypeList';
 import VocabTypeDetail from './components/VocabTypeDetail';
 import VocabTypeForm from './components/VocabTypeForm';
 import DictionaryToolbar from './components/DictionaryToolbar';
+import SaveToRepoModal from './components/SaveToRepoModal';
 
 export default function DataDictionaryApp() {
   const {
@@ -16,6 +17,7 @@ export default function DataDictionaryApp() {
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingVocabType, setEditingVocabType] = useState<string | null>(null);
+  const [showSaveToRepoModal, setShowSaveToRepoModal] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -40,27 +42,12 @@ export default function DataDictionaryApp() {
     setEditingVocabType(null);
   };
 
-  const handleExport = async () => {
-    try {
-      const data = await useDictionaryStore.getState().exportAll();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `data-dictionary-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Export failed:', err);
-    }
-  };
-
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* Toolbar */}
       <DictionaryToolbar
         onAddVocabType={handleAddVocabType}
-        onExport={handleExport}
+        onSaveToRepo={() => setShowSaveToRepoModal(true)}
       />
 
       {/* Error display */}
@@ -105,6 +92,11 @@ export default function DataDictionaryApp() {
           vocabTypeId={editingVocabType}
           onClose={handleCloseForm}
         />
+      )}
+
+      {/* Save to Repo Modal */}
+      {showSaveToRepoModal && (
+        <SaveToRepoModal onClose={() => setShowSaveToRepoModal(false)} />
       )}
     </div>
   );
