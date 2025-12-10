@@ -51,10 +51,6 @@ export default function PropertyEditor() {
 
   return (
     <div className="p-4 space-y-4">
-      <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
-        Property Details
-      </h3>
-
       {/* Property Name */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
