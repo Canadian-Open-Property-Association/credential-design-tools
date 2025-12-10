@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSchemaStore } from '../../store/schemaStore';
 import { useAppTracking } from '../../hooks/useAppTracking';
 import SchemaToolbar from './components/SchemaToolbar';
@@ -10,6 +10,51 @@ import { SchemaMode } from '../../types/vocabulary';
 
 type SchemaTab = 'info' | 'properties';
 
+// Resizable divider component
+function ResizableDivider({ onDrag }: { onDrag: (delta: number) => void }) {
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    startXRef.current = e.clientX;
+  }, []);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - startXRef.current;
+      startXRef.current = e.clientX;
+      onDrag(delta);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, onDrag]);
+
+  return (
+    <div
+      className={`w-1 bg-gray-300 hover:bg-blue-400 cursor-col-resize flex-shrink-0 flex items-center justify-center transition-colors ${
+        isDragging ? 'bg-blue-500' : ''
+      }`}
+      onMouseDown={handleMouseDown}
+    >
+      <div className="w-0.5 h-8 bg-gray-400 rounded" />
+    </div>
+  );
+}
+
 export default function SchemaBuilderApp() {
   // Track app access
   useAppTracking('schema-builder', 'Schema Builder');
@@ -17,6 +62,17 @@ export default function SchemaBuilderApp() {
   const [activeTab, setActiveTab] = useState<SchemaTab>('info');
   const [showNewModal, setShowNewModal] = useState(false);
   const [showLoadModal, setShowLoadModal] = useState(false);
+
+  // Panel width for resizable layout (in pixels)
+  const [configPanelWidth, setConfigPanelWidth] = useState(500);
+
+  // Minimum and maximum panel widths
+  const MIN_PANEL_WIDTH = 300;
+  const MAX_PANEL_WIDTH = 800;
+
+  const handleDividerDrag = useCallback((delta: number) => {
+    setConfigPanelWidth((prev) => Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, prev + delta)));
+  }, []);
 
   const fetchGovernanceDocs = useSchemaStore((state) => state.fetchGovernanceDocs);
   const mode = useSchemaStore((state) => state.metadata.mode);
@@ -173,10 +229,13 @@ export default function SchemaBuilderApp() {
       {/* Toolbar */}
       <SchemaToolbar />
 
-      {/* Main Content - Two Panel Layout */}
+      {/* Main Content - Two Panel Layout with Resizable Divider */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Panel - Tabbed Config */}
-        <div className="w-1/2 border-r border-gray-300 bg-white flex flex-col overflow-hidden">
+        <div
+          className="bg-white flex flex-col overflow-hidden flex-shrink-0"
+          style={{ width: `${configPanelWidth}px` }}
+        >
           {/* Tab Navigation */}
           <div className="flex border-b border-gray-200 bg-white shrink-0">
             <button
@@ -218,8 +277,11 @@ export default function SchemaBuilderApp() {
           </div>
         </div>
 
+        {/* Resizable Divider */}
+        <ResizableDivider onDrag={handleDividerDrag} />
+
         {/* Right Panel - JSON Preview */}
-        <div className="w-1/2 bg-gray-900 flex flex-col overflow-hidden">
+        <div className="flex-1 bg-gray-900 flex flex-col overflow-hidden">
           <div className="bg-gray-800 px-4 py-2 border-b border-gray-700">
             <h2 className="text-white font-medium text-sm">
               {isJsonLdMode ? 'JSON-LD Context' : 'JSON Schema'}
