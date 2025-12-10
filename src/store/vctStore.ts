@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import {
   VCT,
+  VCTFormat,
+  VCTIssuer,
   VCTDisplay,
   VCTClaim,
   VCTSimpleRendering,
@@ -19,6 +21,7 @@ import {
   isFrontBackFormat,
   DynamicCardElement,
   DynamicCardElements,
+  parseJsonSchema,
 } from '../types/vct';
 import { getCurrentUserId, useAuthStore } from './authStore';
 import { useZoneTemplateStore } from './zoneTemplateStore';
@@ -105,8 +108,14 @@ interface LegacyRendering {
 
 // Helper to normalize imported VCT (handle legacy fields)
 const normalizeVct = (vct: VCT): VCT => {
+  // Handle legacy VCTs without format field (default to sd-jwt)
+  const format = vct.format || 'sd-jwt';
+
   return {
     ...vct,
+    format,
+    // Ensure schema_uri is at least an empty string
+    schema_uri: vct.schema_uri || '',
     display: vct.display.map((d) => {
       const legacyRendering = d.rendering as LegacyRendering | undefined;
 
@@ -155,6 +164,11 @@ export const useVctStore = create<VCTStore>()(
       isDirty: false,
       savedProjects: [],
 
+      // Schema properties state
+      schemaProperties: null,
+      isLoadingSchema: false,
+      schemaError: null,
+
       // VCT actions
       setVct: (vct: VCT) => set({ currentVct: normalizeVct(vct), isDirty: true }),
 
@@ -174,6 +188,58 @@ export const useVctStore = create<VCTStore>()(
         })),
 
       updateProjectName: (name: string) => set({ currentProjectName: name, isDirty: true }),
+
+      // Format and Issuer actions
+      setFormat: (format: VCTFormat) =>
+        set((state) => ({
+          currentVct: { ...state.currentVct, format },
+          isDirty: true,
+        })),
+
+      setIssuer: (issuer: VCTIssuer | undefined) =>
+        set((state) => ({
+          currentVct: { ...state.currentVct, issuer },
+          isDirty: true,
+        })),
+
+      // Schema property loading
+      loadSchemaProperties: async (schemaUri: string) => {
+        if (!schemaUri) {
+          set({ schemaProperties: null, schemaError: null });
+          return;
+        }
+
+        set({ isLoadingSchema: true, schemaError: null });
+
+        try {
+          // Fetch the schema from the URL
+          const response = await fetch(schemaUri);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch schema: ${response.status}`);
+          }
+
+          const schemaJson = await response.json();
+          const parsed = parseJsonSchema(schemaJson);
+
+          set({
+            schemaProperties: parsed,
+            isLoadingSchema: false,
+            schemaError: null,
+          });
+        } catch (error) {
+          console.error('Failed to load schema:', error);
+          set({
+            schemaProperties: null,
+            isLoadingSchema: false,
+            schemaError: error instanceof Error ? error.message : 'Failed to load schema',
+          });
+        }
+      },
+
+      clearSchemaProperties: () => set({
+        schemaProperties: null,
+        schemaError: null,
+      }),
 
       // Display actions
       addDisplay: (locale: string) =>
@@ -336,6 +402,8 @@ export const useVctStore = create<VCTStore>()(
           currentProjectId: null,
           currentProjectName: 'Untitled',
           isDirty: false,
+          schemaProperties: null,
+          schemaError: null,
         }),
 
       saveProject: async (name: string) => {

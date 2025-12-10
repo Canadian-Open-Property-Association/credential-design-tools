@@ -99,6 +99,9 @@ export default function VctBuilderApp() {
   // Get available locales from the current VCT display configuration
   const availableLocales = currentVct.display.map((d) => d.locale);
 
+  // Check if schema is selected (required for Claims tab)
+  const hasSchemaSelected = Boolean(currentVct.schema_uri && currentVct.schema_uri.trim());
+
   return (
     <div className="flex flex-col h-full bg-gray-100">
       {/* Toolbar */}
@@ -181,14 +184,19 @@ export default function VctBuilderApp() {
                 Display
               </button>
               <button
-                onClick={() => setActiveSection('claims')}
+                onClick={() => hasSchemaSelected && setActiveSection('claims')}
+                disabled={!hasSchemaSelected}
+                title={!hasSchemaSelected ? 'Select a schema first to configure claims' : 'Configure credential claims'}
                 className={`flex-1 px-4 py-3 text-sm font-medium ${
                   activeSection === 'claims'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                    : !hasSchemaSelected
+                    ? 'text-gray-400 cursor-not-allowed bg-gray-100'
                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                 }`}
               >
                 Claims
+                {!hasSchemaSelected && <span className="ml-1 text-xs">🔒</span>}
               </button>
             </div>
 

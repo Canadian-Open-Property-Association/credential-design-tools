@@ -1,6 +1,41 @@
 // VCT (Verifiable Credential Type) TypeScript Interfaces
 // Based on SD-JWT-VC specification (draft-ietf-oauth-sd-jwt-vc)
 
+// VCT Format - determines claim configuration behavior
+export type VCTFormat = 'sd-jwt' | 'json-ld';
+
+// ============================================
+// SCHEMA PROPERTY PARSING (for claim configuration)
+// ============================================
+
+// Parsed schema property from JSON Schema
+export interface ParsedSchemaProperty {
+  name: string;                    // Property name (key)
+  title?: string;                  // Human-readable title
+  description?: string;            // Property description
+  type: string;                    // JSON Schema type (string, integer, number, boolean, object, array)
+  format?: string;                 // String format (email, uri, date, etc.)
+  path: string[];                  // Full path from credentialSubject (e.g., ["address", "street"])
+  required: boolean;               // Is this property required in schema?
+  children?: ParsedSchemaProperty[]; // Nested properties for objects
+}
+
+// Parsed schema structure for VCT Builder
+export interface ParsedSchema {
+  $id: string;
+  title: string;
+  description?: string;
+  properties: ParsedSchemaProperty[]; // credentialSubject properties
+}
+
+// Issuer reference (links to Entity Manager)
+export interface VCTIssuer {
+  id: string;          // Entity ID from Entity Manager
+  name: string;        // Display name
+  uri?: string;        // Resolved DID or canonical URL
+  logoUri?: string;    // Logo URI from entity
+}
+
 export interface VCTLogo {
   uri: string;
   'uri#integrity'?: string;
@@ -178,13 +213,26 @@ export interface VCTDisplay {
 }
 
 export interface VCT {
+  // Format selection (determines claim behavior)
+  format: VCTFormat;
+
+  // Basic metadata
   vct: string;
   name: string;
   description?: string;
+
+  // Extension (for VCT inheritance)
   extends?: string;
   'extends#integrity'?: string;
-  schema_uri?: string;
+
+  // Schema reference (required - must be selected before claims)
+  schema_uri: string;
   'schema_uri#integrity'?: string;
+
+  // Issuer reference (links to Entity Manager)
+  issuer?: VCTIssuer;
+
+  // Display and claims configuration
   display: VCTDisplay[];
   claims: VCTClaim[];
 }
@@ -231,12 +279,25 @@ export interface VCTStore {
   // Saved projects
   savedProjects: SavedProject[];
 
+  // Schema properties (loaded when schema is selected)
+  schemaProperties: ParsedSchema | null;
+  isLoadingSchema: boolean;
+  schemaError: string | null;
+
   // Actions
   setVct: (vct: VCT) => void;
   updateVctField: <K extends keyof VCT>(field: K, value: VCT[K]) => void;
   setSampleData: (data: SampleData) => void;
   updateSampleDataField: (path: string, value: string) => void;
   updateProjectName: (name: string) => void;
+
+  // Format and Issuer actions
+  setFormat: (format: VCTFormat) => void;
+  setIssuer: (issuer: VCTIssuer | undefined) => void;
+
+  // Schema property actions
+  loadSchemaProperties: (schemaUri: string) => Promise<void>;
+  clearSchemaProperties: () => void;
 
   // Display actions
   addDisplay: (locale: string) => void;
@@ -290,7 +351,8 @@ export interface VCTStore {
 }
 
 // Default empty VCT - starts with only en-CA
-export const createDefaultVct = (): VCT => ({
+export const createDefaultVct = (format: VCTFormat = 'sd-jwt'): VCT => ({
+  format,
   vct: '',
   name: '',
   description: '',
@@ -492,4 +554,128 @@ export const getZoneColor = (index: number): string => {
     'rgba(249, 115, 22, 0.3)', // orange
   ];
   return colors[index % colors.length];
+};
+
+// ============================================
+// SCHEMA PARSING HELPERS
+// ============================================
+
+/**
+ * Parse a JSON Schema property into our internal ParsedSchemaProperty format
+ * Recursively handles nested objects
+ */
+const parseSchemaProperty = (
+  name: string,
+  propSchema: Record<string, unknown>,
+  parentPath: string[],
+  requiredFields: string[]
+): ParsedSchemaProperty => {
+  const path = [...parentPath, name];
+  const type = propSchema.type as string || 'string';
+  const required = requiredFields.includes(name);
+
+  const parsed: ParsedSchemaProperty = {
+    name,
+    title: propSchema.title as string | undefined,
+    description: propSchema.description as string | undefined,
+    type,
+    format: propSchema.format as string | undefined,
+    path,
+    required,
+  };
+
+  // Handle nested object properties
+  if (type === 'object' && propSchema.properties) {
+    const nestedProps = propSchema.properties as Record<string, Record<string, unknown>>;
+    const nestedRequired = (propSchema.required as string[]) || [];
+    parsed.children = Object.entries(nestedProps).map(([nestedName, nestedSchema]) =>
+      parseSchemaProperty(nestedName, nestedSchema, path, nestedRequired)
+    );
+  }
+
+  // Handle array items (if items is an object with properties)
+  if (type === 'array' && propSchema.items) {
+    const itemsSchema = propSchema.items as Record<string, unknown>;
+    if (itemsSchema.type === 'object' && itemsSchema.properties) {
+      const nestedProps = itemsSchema.properties as Record<string, Record<string, unknown>>;
+      const nestedRequired = (itemsSchema.required as string[]) || [];
+      parsed.children = Object.entries(nestedProps).map(([nestedName, nestedSchema]) =>
+        parseSchemaProperty(nestedName, nestedSchema, [...path, '[]'], nestedRequired)
+      );
+    }
+  }
+
+  return parsed;
+};
+
+/**
+ * Parse a full JSON Schema (from URL fetch) into ParsedSchema format
+ * Extracts credentialSubject properties for claim configuration
+ */
+export const parseJsonSchema = (schema: Record<string, unknown>): ParsedSchema => {
+  const credentialSubject = (schema.properties as Record<string, unknown>)?.credentialSubject as Record<string, unknown>;
+
+  if (!credentialSubject || !credentialSubject.properties) {
+    return {
+      $id: schema.$id as string || '',
+      title: schema.title as string || '',
+      description: schema.description as string | undefined,
+      properties: [],
+    };
+  }
+
+  const properties = credentialSubject.properties as Record<string, Record<string, unknown>>;
+  const required = (credentialSubject.required as string[]) || [];
+
+  const parsedProperties = Object.entries(properties).map(([name, propSchema]) =>
+    parseSchemaProperty(name, propSchema, ['credentialSubject'], required)
+  );
+
+  return {
+    $id: schema.$id as string || '',
+    title: schema.title as string || '',
+    description: schema.description as string | undefined,
+    properties: parsedProperties,
+  };
+};
+
+/**
+ * Flatten parsed schema properties into a flat list with full paths
+ * Useful for displaying all possible claim paths
+ */
+export const flattenSchemaProperties = (properties: ParsedSchemaProperty[]): ParsedSchemaProperty[] => {
+  const result: ParsedSchemaProperty[] = [];
+
+  const flatten = (props: ParsedSchemaProperty[]) => {
+    for (const prop of props) {
+      result.push(prop);
+      if (prop.children) {
+        flatten(prop.children);
+      }
+    }
+  };
+
+  flatten(properties);
+  return result;
+};
+
+/**
+ * Convert a property path to the VCT claim path format
+ * VCT uses array format: ["credentialSubject", "address", "street"]
+ */
+export const propertyPathToClaimPath = (path: string[]): (string | number | null)[] => {
+  return path.map(segment => {
+    if (segment === '[]') return 0; // Array index placeholder
+    return segment;
+  });
+};
+
+/**
+ * Get a human-readable display of a property path
+ * e.g., ["credentialSubject", "address", "street"] -> "address.street"
+ */
+export const formatPropertyPath = (path: string[]): string => {
+  // Skip "credentialSubject" prefix for display
+  const displayPath = path.filter(p => p !== 'credentialSubject' && p !== '[]');
+  return displayPath.join('.');
 };
