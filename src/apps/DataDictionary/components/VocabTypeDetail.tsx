@@ -52,6 +52,7 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
   const [previewProperty, setPreviewProperty] = useState<VocabProperty | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [propertySearch, setPropertySearch] = useState('');
 
   if (!selectedVocabType) return null;
 
@@ -78,7 +79,16 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
     }
   };
 
-  const properties = selectedVocabType.properties || [];
+  const allProperties = selectedVocabType.properties || [];
+
+  // Filter properties based on search
+  const properties = propertySearch.length >= 2
+    ? allProperties.filter(p =>
+        p.name.toLowerCase().includes(propertySearch.toLowerCase()) ||
+        p.displayName?.toLowerCase().includes(propertySearch.toLowerCase()) ||
+        p.description?.toLowerCase().includes(propertySearch.toLowerCase())
+      )
+    : allProperties;
 
   const togglePropertySelection = (propertyId: string) => {
     setSelectedPropertyIds(prev => {
@@ -158,17 +168,54 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
             Properties
-            <span className="text-gray-400 font-normal">({properties.length})</span>
+            <span className="text-gray-400 font-normal">
+              ({properties.length}{propertySearch && ` of ${allProperties.length}`})
+            </span>
           </h3>
-          <button
-            onClick={() => { setEditingProperty(null); setShowPropertyForm(true); }}
-            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Property
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Property Search */}
+            <div className="relative">
+              <svg
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search properties..."
+                value={propertySearch}
+                onChange={(e) => setPropertySearch(e.target.value)}
+                className="w-48 pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {propertySearch && (
+                <button
+                  onClick={() => setPropertySearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => { setEditingProperty(null); setShowPropertyForm(true); }}
+              className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Property
+            </button>
+          </div>
         </div>
 
         {/* Bulk Action Bar */}
