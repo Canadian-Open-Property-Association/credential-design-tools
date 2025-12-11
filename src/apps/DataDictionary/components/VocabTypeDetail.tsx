@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDictionaryStore } from '../../../store/dictionaryStore';
 import type { VocabProperty } from '../../../types/dictionary';
 import PropertyForm from './PropertyForm';
 import JsonPreviewModal from './JsonPreviewModal';
 import MovePropertiesModal from './MovePropertiesModal';
+
+// Sort configuration
+type SortField = 'name' | 'valueType' | 'required';
+type SortDirection = 'asc' | 'desc';
 
 // Domain colors for badges
 const DOMAIN_COLORS: Record<string, string> = {
@@ -53,6 +57,21 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [propertySearch, setPropertySearch] = useState('');
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Ref for scrolling to top when vocab type changes
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Reset scroll position and clear search when vocab type changes
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+    setPropertySearch('');
+    setSortField(null);
+    setSelectedPropertyIds(new Set());
+  }, [selectedVocabType?.id]);
 
   if (!selectedVocabType) return null;
 
@@ -82,13 +101,68 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
   const allProperties = selectedVocabType.properties || [];
 
   // Filter properties based on search
-  const properties = propertySearch.length >= 2
+  let properties = propertySearch.length >= 2
     ? allProperties.filter(p =>
         p.name.toLowerCase().includes(propertySearch.toLowerCase()) ||
         p.displayName?.toLowerCase().includes(propertySearch.toLowerCase()) ||
         p.description?.toLowerCase().includes(propertySearch.toLowerCase())
       )
-    : allProperties;
+    : [...allProperties];
+
+  // Sort properties
+  if (sortField) {
+    properties = [...properties].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name':
+          comparison = (a.displayName || a.name).localeCompare(b.displayName || b.name);
+          break;
+        case 'valueType':
+          comparison = a.valueType.localeCompare(b.valueType);
+          break;
+        case 'required':
+          comparison = (a.required ? 1 : 0) - (b.required ? 1 : 0);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }
+
+  // Handle column header click for sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction or clear sort
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        setSortField(null);
+        setSortDirection('asc');
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sort indicator component
+  const SortIndicator = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return (
+        <svg className="w-3 h-3 ml-1 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      );
+    }
+    return sortDirection === 'asc' ? (
+      <svg className="w-3 h-3 ml-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+      </svg>
+    ) : (
+      <svg className="w-3 h-3 ml-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    );
+  };
 
   const togglePropertySelection = (propertyId: string) => {
     setSelectedPropertyIds(prev => {
@@ -120,7 +194,7 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
   };
 
   return (
-    <div className="p-6">
+    <div ref={containerRef} className="p-6 overflow-y-auto h-full">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -261,9 +335,33 @@ export default function VocabTypeDetail({ onEdit }: VocabTypeDetailProps) {
                       className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Required</th>
+                  <th
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center">
+                      Name
+                      <SortIndicator field="name" />
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('valueType')}
+                  >
+                    <div className="flex items-center">
+                      Type
+                      <SortIndicator field="valueType" />
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 select-none"
+                    onClick={() => handleSort('required')}
+                  >
+                    <div className="flex items-center">
+                      Required
+                      <SortIndicator field="required" />
+                    </div>
+                  </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Constraints</th>
                   <th className="px-4 py-2"></th>
                 </tr>
