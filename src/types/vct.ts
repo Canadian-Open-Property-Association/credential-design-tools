@@ -275,6 +275,7 @@ export interface VCTStore {
   currentProjectId: string | null;
   currentProjectName: string;
   isDirty: boolean;
+  isEditing: boolean;
 
   // Saved projects
   savedProjects: SavedProject[];
@@ -312,6 +313,7 @@ export interface VCTStore {
 
   // Project actions
   newProject: () => void;
+  closeProject: () => void;
   saveProject: (name: string) => Promise<void>;
   loadProject: (id: string) => void;
   deleteProject: (id: string) => Promise<void>;

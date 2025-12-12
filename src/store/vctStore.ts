@@ -162,6 +162,7 @@ export const useVctStore = create<VCTStore>()(
       currentProjectId: null,
       currentProjectName: 'Untitled',
       isDirty: false,
+      isEditing: false,
       savedProjects: [],
 
       // Schema properties state
@@ -402,6 +403,19 @@ export const useVctStore = create<VCTStore>()(
           currentProjectId: null,
           currentProjectName: 'Untitled',
           isDirty: false,
+          isEditing: true,
+          schemaProperties: null,
+          schemaError: null,
+        }),
+
+      closeProject: () =>
+        set({
+          currentVct: createDefaultVct(),
+          sampleData: {},
+          currentProjectId: null,
+          currentProjectName: 'Untitled',
+          isDirty: false,
+          isEditing: false,
           schemaProperties: null,
           schemaError: null,
         }),
@@ -479,6 +493,7 @@ export const useVctStore = create<VCTStore>()(
             currentProjectId: project.id,
             currentProjectName: project.name,
             isDirty: false,
+            isEditing: true,
           });
 
           // Restore zone template selection from the VCT's dynamic_card_elements

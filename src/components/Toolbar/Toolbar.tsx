@@ -32,8 +32,10 @@ export default function Toolbar({
   const [showZoneTemplates, setShowZoneTemplates] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
   const currentProjectName = useVctStore((state) => state.currentProjectName);
+  const currentProjectId = useVctStore((state) => state.currentProjectId);
   const savedProjects = useVctStore((state) => state.savedProjects);
   const isDirty = useVctStore((state) => state.isDirty);
   const newProject = useVctStore((state) => state.newProject);
@@ -41,15 +43,25 @@ export default function Toolbar({
   const loadProject = useVctStore((state) => state.loadProject);
   const deleteProject = useVctStore((state) => state.deleteProject);
 
-  const handleSave = () => {
-    setProjectName(currentProjectName);
-    setShowSaveDialog(true);
+  const handleSave = async () => {
+    if (currentProjectId) {
+      // Already has a name, save directly
+      await saveProject(currentProjectName);
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 2000);
+    } else {
+      // First save, show dialog
+      setProjectName(currentProjectName);
+      setShowSaveDialog(true);
+    }
   };
 
-  const handleSaveConfirm = () => {
+  const handleSaveConfirm = async () => {
     if (projectName.trim()) {
-      saveProject(projectName.trim());
+      await saveProject(projectName.trim());
       setShowSaveDialog(false);
+      setShowSaveSuccess(true);
+      setTimeout(() => setShowSaveSuccess(false), 2000);
     }
   };
 
@@ -82,9 +94,24 @@ export default function Toolbar({
         </button>
         <button
           onClick={handleSave}
-          className="px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-1"
+          className={`px-3 py-1.5 text-sm rounded-md flex items-center gap-1 transition-colors ${
+            showSaveSuccess
+              ? 'text-green-700 bg-green-100'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
         >
-          <span>💾</span> Save
+          {showSaveSuccess ? (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Saved!
+            </>
+          ) : (
+            <>
+              <span>💾</span> Save
+            </>
+          )}
         </button>
         <button
           onClick={() => setShowLocalLibrary(true)}
