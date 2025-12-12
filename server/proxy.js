@@ -624,6 +624,155 @@ app.delete('/api/schema-projects/:id', requireProjectAuth, (req, res) => {
 });
 
 // ============================================
+// Managed Assets API (per-user server storage)
+// ============================================
+
+// Managed assets directory
+const MANAGED_ASSETS_DIR = path.join(ASSETS_DIR, 'managed-assets');
+if (!fs.existsSync(MANAGED_ASSETS_DIR)) {
+  fs.mkdirSync(MANAGED_ASSETS_DIR, { recursive: true });
+}
+
+// Helper: Get user's managed assets file path
+const getUserManagedAssetsFile = (userId) => {
+  return path.join(MANAGED_ASSETS_DIR, `user-${userId}.json`);
+};
+
+// Helper: Load user's managed assets
+const loadUserManagedAssets = (userId) => {
+  const filePath = getUserManagedAssetsFile(userId);
+  try {
+    if (fs.existsSync(filePath)) {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    }
+  } catch (e) {
+    console.error(`Error loading managed assets for user ${userId}:`, e);
+  }
+  return { projects: [] };
+};
+
+// Helper: Save user's managed assets
+const saveUserManagedAssets = (userId, data) => {
+  const filePath = getUserManagedAssetsFile(userId);
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+};
+
+// List all managed assets for current user
+app.get('/api/managed-assets', requireProjectAuth, (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const data = loadUserManagedAssets(userId);
+    res.json(data.projects);
+  } catch (error) {
+    console.error('Error listing managed assets:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get a specific managed asset
+app.get('/api/managed-assets/:id', requireProjectAuth, (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { id } = req.params;
+    const data = loadUserManagedAssets(userId);
+    const project = data.projects.find(p => p.id === id);
+
+    if (!project) {
+      return res.status(404).json({ error: 'Managed asset not found' });
+    }
+
+    res.json(project);
+  } catch (error) {
+    console.error('Error getting managed asset:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a new managed asset
+app.post('/api/managed-assets', requireProjectAuth, (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { id, name, asset } = req.body;
+
+    if (!id || !name || !asset) {
+      return res.status(400).json({ error: 'id, name, and asset are required' });
+    }
+
+    const data = loadUserManagedAssets(userId);
+    const now = new Date().toISOString();
+
+    const newProject = {
+      id,
+      name,
+      asset,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    data.projects.push(newProject);
+    saveUserManagedAssets(userId, data);
+
+    res.json(newProject);
+  } catch (error) {
+    console.error('Error creating managed asset:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a managed asset
+app.put('/api/managed-assets/:id', requireProjectAuth, (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { id } = req.params;
+    const { name, asset } = req.body;
+
+    const data = loadUserManagedAssets(userId);
+    const projectIndex = data.projects.findIndex(p => p.id === id);
+
+    if (projectIndex === -1) {
+      return res.status(404).json({ error: 'Managed asset not found' });
+    }
+
+    const now = new Date().toISOString();
+    data.projects[projectIndex] = {
+      ...data.projects[projectIndex],
+      name: name || data.projects[projectIndex].name,
+      asset: asset || data.projects[projectIndex].asset,
+      updatedAt: now,
+    };
+
+    saveUserManagedAssets(userId, data);
+    res.json(data.projects[projectIndex]);
+  } catch (error) {
+    console.error('Error updating managed asset:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a managed asset
+app.delete('/api/managed-assets/:id', requireProjectAuth, (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { id } = req.params;
+
+    const data = loadUserManagedAssets(userId);
+    const projectIndex = data.projects.findIndex(p => p.id === id);
+
+    if (projectIndex === -1) {
+      return res.status(404).json({ error: 'Managed asset not found' });
+    }
+
+    data.projects.splice(projectIndex, 1);
+    saveUserManagedAssets(userId, data);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting managed asset:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
 // Zone Templates API (shared across all users)
 // ============================================
 

@@ -367,7 +367,7 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
   },
 
   // Save the editing template back to the templates list
-  saveEditingTemplate: () => {
+  saveEditingTemplate: async () => {
     const { editingTemplate, templates } = get();
     if (!editingTemplate) return;
 
@@ -379,6 +379,8 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
     if (existingIndex >= 0) {
       // Update existing template
       const updatedTemplate = { ...editingTemplate, updatedAt: now };
+
+      // Optimistically update local state
       set((state) => ({
         templates: state.templates.map((t) =>
           t.id === editingTemplate.id ? updatedTemplate : t
@@ -386,18 +388,46 @@ export const useZoneTemplateStore = create<ZoneTemplateStore & {
         editingTemplate: null,
       }));
 
-      // Save to server
-      api.update(editingTemplate.id, updatedTemplate);
+      // Save to server and handle response
+      const saved = await api.update(editingTemplate.id, updatedTemplate);
+      if (saved) {
+        // Update with server response
+        set((state) => ({
+          templates: state.templates.map((t) =>
+            t.id === editingTemplate.id ? saved : t
+          ),
+        }));
+      } else {
+        // Rollback on failure - reload from server
+        console.error('Failed to save zone template, reloading from server');
+        get().loadTemplates();
+      }
     } else {
       // Add as new template
       const newTemplate = { ...editingTemplate, createdAt: now, updatedAt: now };
+
+      // Optimistically update local state
       set((state) => ({
         templates: [...state.templates, newTemplate],
         editingTemplate: null,
       }));
 
-      // Save to server
-      api.create(newTemplate);
+      // Save to server and handle response
+      const saved = await api.create(newTemplate);
+      if (saved) {
+        // Update with server response (includes author info)
+        set((state) => ({
+          templates: state.templates.map((t) =>
+            t.id === editingTemplate.id ? saved : t
+          ),
+        }));
+      } else {
+        // Remove on failure
+        console.error('Failed to create zone template, removing from local state');
+        set((state) => ({
+          templates: state.templates.filter((t) => t.id !== editingTemplate.id),
+        }));
+      }
     }
   },
 

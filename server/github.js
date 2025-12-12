@@ -843,4 +843,254 @@ Created by @${user.login} using the [COPA Apps](https://apps.openpropertyassocia
   }
 });
 
+// ============================================
+// Simple Entities Endpoint (for Asset Manager)
+// ============================================
+
+// Get entities as simple array for dropdowns
+router.get('/entities', requireAuth, async (req, res) => {
+  try {
+    const octokit = getOctokit(req);
+
+    // Get entities.json from the entities folder
+    const { data } = await octokit.rest.repos.getContent({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      path: `${ENTITY_FOLDER_PATH}/entities.json`,
+      ...(GITHUB_BASE_BRANCH && { ref: GITHUB_BASE_BRANCH }),
+    });
+
+    // Decode base64 content
+    const content = Buffer.from(data.content, 'base64').toString('utf-8');
+    const entityData = JSON.parse(content);
+
+    // Map to simple format for dropdowns
+    const entities = (entityData.entities || []).map((entity) => ({
+      id: entity.id,
+      name: entity.name,
+      types: entity.types || [],
+      logoUri: entity.logoUri,
+    }));
+
+    res.json(entities);
+  } catch (error) {
+    if (error.status === 404) {
+      // File doesn't exist yet
+      return res.json([]);
+    }
+    console.error('Error fetching entities:', error);
+    res.status(500).json({ error: 'Failed to fetch entities' });
+  }
+});
+
+// ============================================
+// Published Assets Endpoints (fetching from VDR)
+// ============================================
+
+// List published assets from GitHub VDR (logos, backgrounds, icons)
+router.get('/published-assets', requireAuth, async (req, res) => {
+  try {
+    const octokit = getOctokit(req);
+    const assets = [];
+
+    // Helper to fetch images from a folder
+    const fetchFolder = async (folderPath, assetType) => {
+      try {
+        const { data: contents } = await octokit.rest.repos.getContent({
+          owner: GITHUB_REPO_OWNER,
+          repo: GITHUB_REPO_NAME,
+          path: folderPath,
+          ...(GITHUB_BASE_BRANCH && { ref: GITHUB_BASE_BRANCH }),
+        });
+
+        // Filter for image files
+        const imageFiles = contents.filter(
+          (file) => file.type === 'file' && /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(file.name)
+        );
+
+        for (const file of imageFiles) {
+          assets.push({
+            id: `${assetType}:${file.name}`,
+            name: file.name.replace(/\.[^.]+$/, ''),
+            filename: file.name,
+            type: assetType,
+            uri: `${BASE_URL}/${file.path}`,
+            downloadUrl: file.download_url,
+            sha: file.sha,
+          });
+        }
+      } catch (error) {
+        if (error.status !== 404) {
+          console.error(`Error fetching ${assetType} folder:`, error);
+        }
+        // Folder doesn't exist, that's fine
+      }
+    };
+
+    // Fetch from all asset folders in parallel
+    await Promise.all([
+      fetchFolder(`${ENTITY_FOLDER_PATH}/logos`, 'entity-logo'),
+      fetchFolder(`${VCT_FOLDER_PATH}/backgrounds`, 'credential-background'),
+      fetchFolder(`${VCT_FOLDER_PATH}/icons`, 'credential-icon'),
+    ]);
+
+    res.json(assets);
+  } catch (error) {
+    console.error('Error fetching published assets:', error);
+    res.status(500).json({ error: 'Failed to fetch published assets' });
+  }
+});
+
+// ============================================
+// Asset Publishing (images to GitHub VDR)
+// ============================================
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename_gh = fileURLToPath(import.meta.url);
+const __dirname_gh = path.dirname(__filename_gh);
+const ASSETS_DIR_GH = process.env.ASSETS_PATH || path.join(__dirname_gh, '../assets');
+
+// Asset type to GitHub path mapping
+const ASSET_TYPE_PATHS = {
+  'entity-logo': `${ENTITY_FOLDER_PATH}/logos`,
+  'credential-background': `${VCT_FOLDER_PATH}/backgrounds`,
+  'credential-icon': `${VCT_FOLDER_PATH}/icons`,
+};
+
+// Create PR to publish an asset to GitHub VDR
+router.post('/asset', requireAuth, async (req, res) => {
+  try {
+    const octokit = getOctokit(req);
+    const user = req.session.user;
+    const { filename, localUri, assetType, entityId, name, title, description } = req.body;
+
+    if (!filename || !localUri || !assetType) {
+      return res.status(400).json({ error: 'filename, localUri, and assetType are required' });
+    }
+
+    if (!ASSET_TYPE_PATHS[assetType]) {
+      return res.status(400).json({ error: `Invalid assetType: ${assetType}` });
+    }
+
+    // Read the local file
+    const localFilePath = path.join(ASSETS_DIR_GH, filename);
+    if (!fs.existsSync(localFilePath)) {
+      return res.status(404).json({ error: 'Local asset file not found' });
+    }
+
+    const fileContent = fs.readFileSync(localFilePath);
+    const encodedContent = fileContent.toString('base64');
+    const ext = path.extname(filename);
+
+    // Determine target filename based on asset type
+    let targetFilename;
+    if (assetType === 'entity-logo') {
+      if (!entityId) {
+        return res.status(400).json({ error: 'entityId is required for entity-logo type' });
+      }
+      targetFilename = `${entityId}${ext}`;
+    } else {
+      // For backgrounds and icons, use sanitized name
+      const safeName = (name || filename.replace(ext, '')).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      targetFilename = `${safeName}${ext}`;
+    }
+
+    const folderPath = ASSET_TYPE_PATHS[assetType];
+    const filePath = `${folderPath}/${targetFilename}`;
+
+    // Get the default branch
+    let baseBranch = GITHUB_BASE_BRANCH;
+    if (!baseBranch) {
+      const { data: repoData } = await octokit.rest.repos.get({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+      });
+      baseBranch = repoData.default_branch;
+    }
+
+    // Get the base branch ref
+    const { data: ref } = await octokit.rest.git.getRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `heads/${baseBranch}`,
+    });
+
+    // Create a unique branch for this PR
+    const branchName = `asset/${assetType}/${targetFilename.replace(ext, '')}-${Date.now()}`;
+    await octokit.rest.git.createRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `refs/heads/${branchName}`,
+      sha: ref.object.sha,
+    });
+
+    // Check if file already exists
+    let existingSha = null;
+    try {
+      const { data: existingFile } = await octokit.rest.repos.getContent({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+        path: filePath,
+        ref: baseBranch,
+      });
+      existingSha = existingFile.sha;
+    } catch {
+      // File doesn't exist, that's fine
+    }
+
+    // Create or update the file
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      path: filePath,
+      message: title || `Add ${assetType}: ${targetFilename}`,
+      content: encodedContent,
+      branch: branchName,
+      ...(existingSha && { sha: existingSha }),
+    });
+
+    // Create a pull request
+    const prTitle = title || `Add ${assetType}: ${targetFilename}`;
+    const assetTypeLabel = {
+      'entity-logo': 'Entity Logo',
+      'credential-background': 'Credential Background',
+      'credential-icon': 'Credential Icon',
+    }[assetType];
+    const prBody = description || `This PR adds a new ${assetTypeLabel}: \`${targetFilename}\`
+
+**Type:** ${assetTypeLabel}
+**File:** \`${filePath}\`
+${entityId ? `**Entity ID:** ${entityId}` : ''}
+
+Created by @${user.login} using the [COPA Apps](https://apps.openpropertyassociation.ca).`;
+
+    const { data: pr } = await octokit.rest.pulls.create({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      title: prTitle,
+      body: prBody,
+      head: branchName,
+      base: baseBranch,
+    });
+
+    res.json({
+      success: true,
+      pr: {
+        number: pr.number,
+        url: pr.html_url,
+        title: pr.title,
+      },
+      branch: branchName,
+      file: filePath,
+      uri: `${BASE_URL}/${filePath}`,
+    });
+  } catch (error) {
+    console.error('Error creating Asset PR:', error);
+    res.status(500).json({ error: error.message || 'Failed to create asset pull request' });
+  }
+});
+
 export default router;

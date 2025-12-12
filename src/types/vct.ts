@@ -506,7 +506,7 @@ export interface ZoneTemplateStore {
   copyBackToFront: () => void;
 
   // Save editing template
-  saveEditingTemplate: () => void;
+  saveEditingTemplate: () => Promise<void>;
 
   // Getters
   getTemplate: (id: string) => ZoneTemplate | undefined;

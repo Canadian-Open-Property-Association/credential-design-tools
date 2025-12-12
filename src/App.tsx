@@ -12,6 +12,7 @@ import DataDictionaryApp from './apps/DataDictionary/DataDictionaryApp';
 import DataHarmonizationApp from './apps/DataHarmonization/DataHarmonizationApp';
 import EntityManagerApp from './apps/EntityManager/EntityManagerApp';
 import DevToolsApp from './apps/DevTools/DevToolsApp';
+import { AssetManagerApp } from './apps/AssetManager';
 
 // App icons for the platform bar
 const VctBuilderIcon = (
@@ -53,6 +54,12 @@ const EntityManagerIcon = (
 const DevToolsIcon = (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+  </svg>
+);
+
+const AssetManagerIcon = (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
   </svg>
 );
 
@@ -139,6 +146,17 @@ function App() {
             <AuthGuard>
               <PlatformShell appName="Entity Manager" appIcon={EntityManagerIcon}>
                 <EntityManagerApp />
+              </PlatformShell>
+            </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/apps/asset-manager/*"
+          element={
+            <AuthGuard>
+              <PlatformShell appName="Asset Manager" appIcon={AssetManagerIcon}>
+                <AssetManagerApp />
               </PlatformShell>
             </AuthGuard>
           }
