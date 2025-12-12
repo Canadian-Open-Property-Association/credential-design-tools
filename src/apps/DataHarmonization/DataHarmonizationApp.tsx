@@ -1,25 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useHarmonizationStore } from '../../store/harmonizationStore';
 import HarmonizationToolbar from './components/HarmonizationToolbar';
 import EntityList from './components/EntityList';
-import VocabTypeList from './components/VocabTypeList';
-import MappingPanel from './components/MappingPanel';
-import MappingForm from './components/MappingForm';
+import FurnisherDetailPanel from './components/FurnisherDetailPanel';
+import PropertyPickerModal from './components/PropertyPickerModal';
+import AllMappingsView from './components/AllMappingsView';
 
 export default function DataHarmonizationApp() {
   const {
     fetchMappings,
     fetchEntities,
     fetchVocabTypes,
-    selectedEntityId,
-    selectedVocabTypeId,
+    viewMode,
+    setViewMode,
+    mappingFieldContext,
+    closeMappingModal,
+    getSelectedEntity,
     isLoading,
     isEntitiesLoading,
-    isVocabTypesLoading,
     error,
   } = useHarmonizationStore();
-
-  const [showMappingForm, setShowMappingForm] = useState(false);
 
   // Load data on mount
   useEffect(() => {
@@ -28,14 +28,28 @@ export default function DataHarmonizationApp() {
     fetchVocabTypes();
   }, [fetchMappings, fetchEntities, fetchVocabTypes]);
 
-  const handleCreateMapping = () => {
-    setShowMappingForm(true);
-  };
+  const selectedEntity = getSelectedEntity();
+
+  // Show All Mappings view if in that mode
+  if (viewMode === 'all-mappings') {
+    return (
+      <>
+        <AllMappingsView onBack={() => setViewMode('furnisher-detail')} />
+        {/* Property Picker Modal */}
+        {mappingFieldContext && (
+          <PropertyPickerModal
+            context={mappingFieldContext}
+            onClose={closeMappingModal}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* Toolbar */}
-      <HarmonizationToolbar onCreateMapping={handleCreateMapping} />
+      <HarmonizationToolbar />
 
       {/* Error display */}
       {error && (
@@ -44,13 +58,13 @@ export default function DataHarmonizationApp() {
         </div>
       )}
 
-      {/* Main content - 3 panel layout */}
+      {/* Main content - 2 panel layout */}
       <div className="flex-1 flex overflow-hidden p-4 gap-4">
         {/* Left panel - Data Furnishers */}
         <div className="w-72 flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
           <div className="px-4 py-3 border-b border-gray-200">
             <h2 className="text-sm font-semibold text-gray-700">Data Furnishers</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Source fields to map</p>
+            <p className="text-xs text-gray-500 mt-0.5">Select to view fields</p>
           </div>
           <div className="flex-1 overflow-y-auto">
             {isEntitiesLoading ? (
@@ -63,52 +77,36 @@ export default function DataHarmonizationApp() {
           </div>
         </div>
 
-        {/* Center panel - Mappings */}
-        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-gray-700">Field Mappings</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {selectedEntityId && selectedVocabTypeId
-                ? 'Mappings between selected furnisher and vocab type'
-                : selectedEntityId
-                ? 'Select a vocab type to see mappings'
-                : selectedVocabTypeId
-                ? 'Select a furnisher to see mappings'
-                : 'Select a furnisher and vocab type to manage mappings'}
-            </p>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full" />
+        {/* Right panel - Furnisher Detail or Empty State */}
+        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+          {isLoading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="animate-spin w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full" />
+            </div>
+          ) : selectedEntity ? (
+            <div className="flex-1 overflow-y-auto">
+              <FurnisherDetailPanel entity={selectedEntity} />
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <p className="text-lg font-medium">Select a data furnisher</p>
+                <p className="text-sm mt-1">Choose from the list to view and map their fields</p>
               </div>
-            ) : (
-              <MappingPanel onCreateMapping={handleCreateMapping} />
-            )}
-          </div>
-        </div>
-
-        {/* Right panel - COPA Vocabulary */}
-        <div className="w-72 flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <h2 className="text-sm font-semibold text-gray-700">COPA Vocabulary</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Target properties</p>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {isVocabTypesLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin w-5 h-5 border-2 border-purple-600 border-t-transparent rounded-full" />
-              </div>
-            ) : (
-              <VocabTypeList />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Mapping Form Modal */}
-      {showMappingForm && (
-        <MappingForm onClose={() => setShowMappingForm(false)} />
+      {/* Property Picker Modal */}
+      {mappingFieldContext && (
+        <PropertyPickerModal
+          context={mappingFieldContext}
+          onClose={closeMappingModal}
+        />
       )}
     </div>
   );

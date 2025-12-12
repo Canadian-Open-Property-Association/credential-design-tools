@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { FieldMapping, MappingWithDetails, HarmonizationStats } from '../types/harmonization';
-import type { Entity } from '../types/entity';
+import type { Entity, FurnisherField } from '../types/entity';
 import type { VocabType } from '../types/dictionary';
+import { migrateDataSchema } from '../types/entity';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5174';
 
@@ -92,6 +93,22 @@ const harmonizationApi = {
 };
 
 // ============================================
+// View Mode Types
+// ============================================
+
+export type HarmonizationViewMode = 'furnisher-detail' | 'all-mappings';
+
+// Field info for the mapping modal
+export interface MappingFieldContext {
+  entityId: string;
+  entityName: string;
+  sourceId: string;
+  sourceName: string;
+  sourceType: 'direct-feed' | 'credential';
+  field: FurnisherField;
+}
+
+// ============================================
 // Store Interface
 // ============================================
 
@@ -108,6 +125,10 @@ interface HarmonizationState {
   selectedEntityId: string | null;
   selectedVocabTypeId: string | null;
   selectedMappingId: string | null;
+
+  // NEW: View mode and mapping modal state
+  viewMode: HarmonizationViewMode;
+  mappingFieldContext: MappingFieldContext | null;  // Field currently being mapped (for modal)
 
   // Loading states
   isLoading: boolean;
@@ -126,6 +147,11 @@ interface HarmonizationState {
   selectVocabType: (id: string | null) => void;
   selectMapping: (id: string | null) => void;
 
+  // NEW: View mode actions
+  setViewMode: (mode: HarmonizationViewMode) => void;
+  openMappingModal: (context: MappingFieldContext) => void;
+  closeMappingModal: () => void;
+
   // Mapping CRUD
   createMapping: (mapping: Partial<FieldMapping>) => Promise<FieldMapping>;
   updateMapping: (id: string, updates: Partial<FieldMapping>) => Promise<void>;
@@ -133,10 +159,13 @@ interface HarmonizationState {
 
   // Helpers
   getDataFurnishers: () => Entity[];
+  getSelectedEntity: () => Entity | null;
   getMappingsForEntity: (entityId: string) => FieldMapping[];
   getMappingsForSource: (entityId: string, sourceId: string) => FieldMapping[];
+  getMappingForField: (entityId: string, sourceId: string, fieldId: string) => FieldMapping | null;
   getMappingsForVocabType: (vocabTypeId: string) => FieldMapping[];
   getMappingsForSelection: () => FieldMapping[];
+  getUnmappedFieldsCount: (entityId: string) => number;
 }
 
 // ============================================
@@ -152,6 +181,8 @@ export const useHarmonizationStore = create<HarmonizationState>((set, get) => ({
   selectedEntityId: null,
   selectedVocabTypeId: null,
   selectedMappingId: null,
+  viewMode: 'furnisher-detail',
+  mappingFieldContext: null,
   isLoading: false,
   isEntitiesLoading: false,
   isVocabTypesLoading: false,
@@ -222,6 +253,11 @@ export const useHarmonizationStore = create<HarmonizationState>((set, get) => ({
   selectVocabType: (id) => set({ selectedVocabTypeId: id }),
   selectMapping: (id) => set({ selectedMappingId: id }),
 
+  // View mode actions
+  setViewMode: (mode) => set({ viewMode: mode }),
+  openMappingModal: (context) => set({ mappingFieldContext: context }),
+  closeMappingModal: () => set({ mappingFieldContext: null }),
+
   // Create mapping
   createMapping: async (mapping) => {
     const result = await harmonizationApi.createMapping(mapping);
@@ -250,6 +286,13 @@ export const useHarmonizationStore = create<HarmonizationState>((set, get) => ({
     return entities.filter(e => e.types?.includes('data-furnisher'));
   },
 
+  // Helper: Get selected entity
+  getSelectedEntity: () => {
+    const { entities, selectedEntityId } = get();
+    if (!selectedEntityId) return null;
+    return entities.find(e => e.id === selectedEntityId) || null;
+  },
+
   // Helper: Get mappings for a specific entity
   getMappingsForEntity: (entityId) => {
     const { mappings } = get();
@@ -260,6 +303,16 @@ export const useHarmonizationStore = create<HarmonizationState>((set, get) => ({
   getMappingsForSource: (entityId: string, sourceId: string) => {
     const { mappings } = get();
     return mappings.filter(m => m.entityId === entityId && m.sourceId === sourceId);
+  },
+
+  // Helper: Get mapping for a specific field
+  getMappingForField: (entityId: string, sourceId: string, fieldId: string) => {
+    const { mappings } = get();
+    return mappings.find(m =>
+      m.entityId === entityId &&
+      m.sourceId === sourceId &&
+      m.furnisherFieldId === fieldId
+    ) || null;
   },
 
   // Helper: Get mappings for a specific vocab type
@@ -277,5 +330,30 @@ export const useHarmonizationStore = create<HarmonizationState>((set, get) => ({
       const matchesVocabType = !selectedVocabTypeId || m.vocabTypeId === selectedVocabTypeId;
       return matchesEntity && matchesVocabType;
     });
+  },
+
+  // Helper: Get count of unmapped fields for an entity
+  getUnmappedFieldsCount: (entityId: string) => {
+    const { entities, mappings } = get();
+    const entity = entities.find(e => e.id === entityId);
+    if (!entity) return 0;
+
+    const schema = migrateDataSchema(entity.dataSchema);
+    let totalFields = 0;
+    let mappedFields = 0;
+
+    for (const source of schema.sources || []) {
+      for (const field of source.fields || []) {
+        totalFields++;
+        const hasMapping = mappings.some(m =>
+          m.entityId === entityId &&
+          m.sourceId === source.id &&
+          m.furnisherFieldId === field.id
+        );
+        if (hasMapping) mappedFields++;
+      }
+    }
+
+    return totalFields - mappedFields;
   },
 }));

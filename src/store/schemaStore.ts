@@ -534,8 +534,8 @@ export const useSchemaStore = create<SchemaStore>()(
             governanceDocUrl: schema['x-governance-doc'],
             governanceDocName: undefined,
             standardClaims,
-            // Default to json-schema mode for imports
-            mode: 'json-schema',
+            // Preserve the current mode when importing
+            mode: get().metadata.mode,
             vocabUrl: undefined,
             contextUrl: undefined,
             contextVersion: 1.1,
