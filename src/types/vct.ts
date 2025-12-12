@@ -351,7 +351,7 @@ export interface VCTStore {
 }
 
 // Default empty VCT - starts with only en-CA
-export const createDefaultVct = (format: VCTFormat = 'sd-jwt'): VCT => ({
+export const createDefaultVct = (format: VCTFormat = 'json-ld'): VCT => ({
   format,
   vct: '',
   name: '',
