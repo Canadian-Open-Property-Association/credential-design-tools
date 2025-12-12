@@ -379,6 +379,29 @@ export const useHarmonizationStore = create<HarmonizationState>((set, get) => ({
     await get().fetchMappings();
   },
 
+  // Save mappings to GitHub repository
+  saveToGitHub: async (title: string, description?: string) => {
+    const { mappings } = get();
+
+    const response = await fetch(`${API_BASE}/api/github/harmonization`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        content: { mappings },
+        title,
+        description,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save to GitHub');
+    }
+
+    return response.json();
+  },
+
   // Helper: Get only data furnisher entities
   getDataFurnishers: () => {
     const { entities } = get();
