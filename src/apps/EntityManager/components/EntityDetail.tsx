@@ -151,21 +151,31 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
   // Asset count for the tab badge
   const [assetCount, setAssetCount] = useState(0);
 
-  // Fetch asset count for this entity
+  // Entity logo from asset library (takes priority over entity.logoUri)
+  const [assetLogoUri, setAssetLogoUri] = useState<string | null>(null);
+
+  // Fetch assets for this entity (count and logo)
   useEffect(() => {
-    const fetchAssetCount = async () => {
+    const fetchAssets = async () => {
       try {
         const res = await fetch(`${API_BASE}/api/assets?entityId=${entity.id}`, { credentials: 'include' });
         if (res.ok) {
           const assets: EntityAsset[] = await res.json();
           setAssetCount(assets.length);
+
+          // Find entity-logo asset
+          const logoAsset = assets.find(a => a.type === 'entity-logo');
+          setAssetLogoUri(logoAsset?.localUri || null);
         }
       } catch (err) {
-        console.error('Failed to fetch asset count:', err);
+        console.error('Failed to fetch assets:', err);
       }
     };
-    fetchAssetCount();
+    fetchAssets();
   }, [entity.id, activeTab]); // Re-fetch when switching to assets tab (in case assets were added)
+
+  // Get the best available logo URI
+  const effectiveLogoUri = assetLogoUri || entity.logoUri;
 
   // Only reset to 'about' tab when switching to a different entity
   useEffect(() => {
@@ -275,9 +285,9 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
           <div
             className="w-16 h-16 rounded-xl bg-white shadow-lg border-4 border-white flex items-center justify-center overflow-hidden flex-shrink-0"
           >
-            {entity.logoUri ? (
+            {effectiveLogoUri ? (
               <img
-                src={resolveLogoUri(entity.logoUri)}
+                src={resolveLogoUri(effectiveLogoUri)}
                 alt={entity.name}
                 className="w-full h-full object-contain"
                 onError={(e) => {
