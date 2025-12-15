@@ -106,6 +106,28 @@ function getTypeColor(type: EntityType): string {
 // All available entity types
 const ALL_ENTITY_TYPES: EntityType[] = ['issuer', 'data-furnisher', 'network-partner', 'service-provider'];
 
+// Canadian province/territory codes
+const CANADIAN_REGIONS = ['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'];
+
+// Normalize region code to standard 2-letter format (e.g., "CA-BC" -> "BC", "ca-bc" -> "BC")
+function normalizeRegion(region: string): string {
+  const upper = region.toUpperCase();
+  // If it's in CA-XX format, extract the province code
+  if (upper.startsWith('CA-')) {
+    return upper.slice(3);
+  }
+  return upper;
+}
+
+// Normalize all regions in an array to standard format
+function normalizeRegions(regions: string[] | undefined): string[] {
+  if (!regions) return [];
+  // Normalize and deduplicate
+  const normalized = new Set(regions.map(normalizeRegion));
+  // Only keep valid Canadian region codes
+  return Array.from(normalized).filter(r => CANADIAN_REGIONS.includes(r));
+}
+
 export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailProps) {
   const brandColour = entity.primaryColor || '#1a365d';
   const { updateEntity, selectEntity } = useEntityStore();
@@ -114,7 +136,7 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
 
   // Inline editing states
   const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [editFormData, setEditFormData] = useState<Partial<Entity>>({});
+  const [editFormData, setEditFormData] = useState<Partial<Entity> & { newId?: string }>({});
 
   // Entity types editing state (used in Entity Classification section)
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(entity.types || []);
@@ -168,7 +190,9 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
 
   const startEditing = (section: string) => {
     setEditingSection(section);
-    setEditFormData({ ...entity });
+    // Extract slug from entity ID (remove copa- prefix if present)
+    const idSlug = entity.id.startsWith('copa-') ? entity.id.slice(5) : entity.id;
+    setEditFormData({ ...entity, newId: idSlug });
   };
 
   const cancelEditing = () => {
@@ -335,6 +359,22 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
             onCancel={cancelEditing}
             editContent={
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-xs text-gray-500 mb-1">Entity ID</label>
+                  <div className="flex items-center">
+                    <span className="px-3 py-1.5 text-sm font-mono bg-gray-100 border border-r-0 border-gray-300 rounded-l-md text-gray-500">
+                      copa-
+                    </span>
+                    <input
+                      type="text"
+                      value={editFormData.newId || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, newId: e.target.value }))}
+                      placeholder="entity-slug"
+                      className="flex-1 px-3 py-1.5 text-sm font-mono border border-gray-300 rounded-r-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Lowercase letters, numbers, and hyphens only</p>
+                </div>
                 <div>
                   <label className="block text-xs text-gray-500 mb-1">Website</label>
                   <input
@@ -490,7 +530,11 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
               onEdit={() => {
                 setEditingSection('classification');
                 setSelectedTypes(entity.types || []);
-                setEditFormData({ ...entity });
+                // Normalize regions when starting to edit to clean up any mixed formats
+                setEditFormData({
+                  ...entity,
+                  regionsCovered: normalizeRegions(entity.regionsCovered)
+                });
               }}
               onSave={async () => {
                 try {
@@ -550,7 +594,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                     <div>
                       <span className="block text-xs font-medium text-gray-600 mb-2">Regions Covered</span>
                       <div className="grid grid-cols-4 gap-2">
-                        {['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'].map((region) => {
+                        {CANADIAN_REGIONS.map((region) => {
+                          // Use normalized check to handle mixed formats (CA-BC, BC, etc.)
                           const isSelected = editFormData.regionsCovered?.includes(region);
                           return (
                             <div
@@ -642,7 +687,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                       <label className="text-xs text-gray-500">Regions Covered</label>
                       {entity.regionsCovered && entity.regionsCovered.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5 mt-1">
-                          {entity.regionsCovered.map((region) => (
+                          {/* Normalize regions for display to show consistent format */}
+                          {normalizeRegions(entity.regionsCovered).map((region) => (
                             <span
                               key={region}
                               className="px-2 py-0.5 text-xs bg-green-50 border border-green-200 text-green-800 rounded"

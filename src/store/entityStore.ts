@@ -195,12 +195,13 @@ export const useEntityStore = create<EntityState>((set, get) => ({
   },
 
   // Update entity
-  updateEntity: async (id: string, updates: Partial<Entity>) => {
-    await entityApi.updateEntity(id, updates);
+  updateEntity: async (id: string, updates: Partial<Entity> & { newId?: string }) => {
+    const result = await entityApi.updateEntity(id, updates);
     await get().fetchEntities();
-    // Refresh selected entity if it was updated
+    // Refresh selected entity - use new ID if it changed
     if (get().selectedEntity?.id === id) {
-      await get().selectEntity(id);
+      const newId = result.id || id;
+      await get().selectEntity(newId);
     }
   },
 

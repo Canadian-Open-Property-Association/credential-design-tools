@@ -209,8 +209,26 @@ router.put('/:id', requireAuth, (req, res) => {
     const existingTypes = entities[index].types || (entities[index].type ? [entities[index].type] : []);
     const newTypes = req.body.types ?? (req.body.type ? [req.body.type] : existingTypes);
 
+    // Handle ID change if requested (newId is the slug part, without copa- prefix)
+    let newEntityId = entities[index].id;
+    if (req.body.newId !== undefined && req.body.newId !== null) {
+      // Ensure the new ID has copa- prefix and is properly formatted
+      const slug = req.body.newId
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      newEntityId = slug.startsWith('copa-') ? slug : `copa-${slug}`;
+
+      // Check for duplicate ID (but allow if it's the same as current)
+      if (newEntityId !== entities[index].id && entities.some((e) => e.id === newEntityId)) {
+        return res.status(409).json({ error: 'Entity with this ID already exists' });
+      }
+    }
+
     const updatedEntity = {
       ...entities[index],
+      id: newEntityId,
       name: req.body.name ?? entities[index].name,
       types: newTypes,
       description: req.body.description ?? entities[index].description,
