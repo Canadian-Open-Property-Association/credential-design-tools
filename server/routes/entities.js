@@ -133,9 +133,14 @@ router.post('/', requireAuth, (req, res) => {
     const now = new Date().toISOString();
 
     // Generate slug-style ID from name with copa- prefix
+    // Handles accented characters by converting them to their base form (é → e, etc.)
     const generateId = (name) => {
       const slug = name
         .toLowerCase()
+        // Normalize to decompose accented characters (é → e + combining accent)
+        .normalize('NFD')
+        // Remove combining diacritical marks (the accents)
+        .replace(/[\u0300-\u036f]/g, '')
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]/g, '')
         .replace(/-+/g, '-')
@@ -213,8 +218,11 @@ router.put('/:id', requireAuth, (req, res) => {
     let newEntityId = entities[index].id;
     if (req.body.newId !== undefined && req.body.newId !== null) {
       // Ensure the new ID has copa- prefix and is properly formatted
+      // Handle accented characters by converting them to their base form
       const slug = req.body.newId
         .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9-]/g, '')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');

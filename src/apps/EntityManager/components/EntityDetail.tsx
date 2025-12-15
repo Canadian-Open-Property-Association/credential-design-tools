@@ -138,6 +138,10 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Entity> & { newId?: string }>({});
 
+  // Entity name editing state (used in header)
+  const [editingName, setEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(entity.name);
+
   // Entity types editing state (used in Entity Classification section)
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(entity.types || []);
 
@@ -169,9 +173,18 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
       currentEntityIdRef.current = entity.id;
       setActiveTab('about');
       setEditingSection(null);
+      setEditingName(false);
+      setEditedName(entity.name);
       setSelectedTypes(entity.types || []);
     }
   }, [entity.id]);
+
+  // Sync edited name when entity name changes (e.g., after save)
+  useEffect(() => {
+    if (!editingName) {
+      setEditedName(entity.name);
+    }
+  }, [entity.name, editingName]);
 
   // Sync selectedTypes when entity.types changes (e.g., after save)
   useEffect(() => {
@@ -185,6 +198,23 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
       await updateEntity(entity.id, { dataSchema: schema });
     } catch (error) {
       console.error('Failed to update schema:', error);
+    }
+  };
+
+  // Save entity name
+  const handleSaveName = async () => {
+    if (!editedName.trim() || editedName === entity.name) {
+      setEditingName(false);
+      setEditedName(entity.name);
+      return;
+    }
+    try {
+      await updateEntity(entity.id, { name: editedName.trim() });
+      setEditingName(false);
+    } catch (error) {
+      console.error('Failed to update name:', error);
+      setEditedName(entity.name);
+      setEditingName(false);
     }
   };
 
@@ -267,9 +297,60 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
 
         {/* Name and badges - completely below banner */}
         <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 truncate mb-2">
-            {entity.name}
-          </h2>
+          {editingName ? (
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveName();
+                  if (e.key === 'Escape') {
+                    setEditingName(false);
+                    setEditedName(entity.name);
+                  }
+                }}
+                autoFocus
+                className="text-xl font-semibold text-gray-900 bg-transparent border-b-2 border-blue-500 focus:outline-none flex-1 min-w-0"
+              />
+              <button
+                onClick={handleSaveName}
+                className="p-1 text-green-600 hover:text-green-700"
+                title="Save"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => {
+                  setEditingName(false);
+                  setEditedName(entity.name);
+                }}
+                className="p-1 text-gray-400 hover:text-gray-600"
+                title="Cancel"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="group flex items-center gap-2 mb-2">
+              <h2 className="text-xl font-semibold text-gray-900 truncate">
+                {entity.name}
+              </h2>
+              <button
+                onClick={() => setEditingName(true)}
+                className="p-1 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Edit name"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           {/* Entity Types - Read-only badges */}
           <div className="flex items-center gap-2 flex-wrap">

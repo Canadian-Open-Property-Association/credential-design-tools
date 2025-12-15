@@ -56,12 +56,7 @@ export default function AssetsSection({ entity, onRefreshEntity }: AssetsSection
     setUploading(true);
     setError(null);
 
-    // Check if entity already has a logo
-    const hasExistingLogo = entity.logoUri || assets.some(a => a.type === 'entity-logo');
-
     try {
-      let firstUploadedAsset: EntityAsset | null = null;
-
       for (const file of Array.from(files)) {
         const formData = new FormData();
         formData.append('file', file);
@@ -78,22 +73,10 @@ export default function AssetsSection({ entity, onRefreshEntity }: AssetsSection
           const data = await res.json();
           throw new Error(data.error || 'Upload failed');
         }
-
-        // Save the first uploaded asset
-        if (!firstUploadedAsset) {
-          firstUploadedAsset = await res.json();
-        }
       }
 
       await fetchAssets();
-
-      // Auto-set first uploaded image as entity logo if no logo exists
-      if (!hasExistingLogo && firstUploadedAsset) {
-        await setAsEntityLogo(firstUploadedAsset);
-        setSuccessMessage(`Uploaded ${files.length} file(s) and set as entity logo`);
-      } else {
-        setSuccessMessage(`Uploaded ${files.length} file(s)`);
-      }
+      setSuccessMessage(`Uploaded ${files.length} file(s)`);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');

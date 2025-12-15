@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useEntityStore } from '../../../store/entityStore';
-import type { Entity, EntityType, EntityStatus } from '../../../types/entity';
-import { ENTITY_TYPE_CONFIG, ENTITY_STATUS_CONFIG } from '../../../types/entity';
+import type { Entity, EntityType, EntityStatus, DataProviderType } from '../../../types/entity';
+import { ENTITY_TYPE_CONFIG, ENTITY_STATUS_CONFIG, DATA_PROVIDER_TYPE_CONFIG, ALL_DATA_PROVIDER_TYPES } from '../../../types/entity';
 import AssetLibrary from '../../../components/AssetLibrary/AssetLibrary';
 
 interface EntityFormProps {
@@ -26,6 +26,7 @@ const defaultFormData: FormData = {
   did: '',
   status: 'active',
   regionsCovered: [],
+  dataProviderTypes: [],
 };
 
 // Canadian provinces/territories for regions dropdown
@@ -46,9 +47,14 @@ const CANADIAN_REGIONS = [
 ];
 
 // Generate a slug from name with copa- prefix
+// Handles accented characters by converting them to their base form (é → e, etc.)
 function generateSlug(name: string): string {
   const slug = name
     .toLowerCase()
+    // Normalize to decompose accented characters (é → e + combining accent)
+    .normalize('NFD')
+    // Remove combining diacritical marks (the accents)
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '')
     .replace(/-+/g, '-')
@@ -83,6 +89,7 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
           did: entity.did || '',
           status: entity.status,
           regionsCovered: entity.regionsCovered || [],
+          dataProviderTypes: entity.dataProviderTypes || [],
         });
       }
     }
@@ -98,6 +105,16 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
       regionsCovered: prev.regionsCovered?.includes(region)
         ? prev.regionsCovered.filter((r) => r !== region)
         : [...(prev.regionsCovered || []), region],
+    }));
+  };
+
+  // Handle data provider type toggle
+  const handleDataProviderTypeToggle = (providerType: DataProviderType) => {
+    setFormData((prev) => ({
+      ...prev,
+      dataProviderTypes: prev.dataProviderTypes?.includes(providerType)
+        ? prev.dataProviderTypes.filter((t) => t !== providerType)
+        : [...(prev.dataProviderTypes || []), providerType],
     }));
   };
 
@@ -510,6 +527,58 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
                       {formData.regionsCovered.length} region{formData.regionsCovered.length !== 1 ? 's' : ''} selected
                     </p>
                   )}
+
+                  {/* Data Provider Types */}
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data Provider Types
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Select the types of data this furnisher provides
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {ALL_DATA_PROVIDER_TYPES.map((providerType) => (
+                        <label
+                          key={providerType}
+                          className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors text-sm ${
+                            formData.dataProviderTypes?.includes(providerType)
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.dataProviderTypes?.includes(providerType) || false}
+                            onChange={() => handleDataProviderTypeToggle(providerType)}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                              formData.dataProviderTypes?.includes(providerType)
+                                ? 'bg-blue-500 border-blue-500'
+                                : 'border-gray-400'
+                            }`}
+                          >
+                            {formData.dataProviderTypes?.includes(providerType) && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          <span className="truncate">{DATA_PROVIDER_TYPE_CONFIG[providerType].label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {formData.dataProviderTypes && formData.dataProviderTypes.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        {formData.dataProviderTypes.length} type{formData.dataProviderTypes.length !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
