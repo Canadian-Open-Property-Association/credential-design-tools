@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Entity, EntityType, FurnisherDataSchema, EntityAsset } from '../../../types/entity';
 import { ENTITY_TYPE_CONFIG, migrateDataSchema, DATA_PROVIDER_TYPE_CONFIG, ALL_DATA_PROVIDER_TYPES } from '../../../types/entity';
 import { useEntityStore } from '../../../store/entityStore';
@@ -142,11 +142,34 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
   const [editingName, setEditingName] = useState(false);
   const [editedName, setEditedName] = useState(entity.name);
 
+  // Entity description editing state
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(entity.description || '');
+
   // Entity types editing state (used in Entity Classification section)
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(entity.types || []);
 
   // Track the current entity ID to reset tab only when switching entities
   const currentEntityIdRef = useRef(entity.id);
+
+  // Ref for scroll container to preserve scroll position on tab change
+  const detailContainerRef = useRef<HTMLDivElement>(null);
+
+  // Handle tab change while preserving scroll position
+  const handleTabChange = useCallback((tab: 'about' | 'data-schema' | 'assets') => {
+    // Get the parent scroll container (the detail panel)
+    const scrollContainer = detailContainerRef.current?.closest('.overflow-y-auto');
+    const scrollTop = scrollContainer?.scrollTop ?? 0;
+
+    setActiveTab(tab);
+
+    // Restore scroll position after React renders the new tab content
+    requestAnimationFrame(() => {
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollTop;
+      }
+    });
+  }, []);
 
   // Asset count for the tab badge
   const [assetCount, setAssetCount] = useState(0);
@@ -185,6 +208,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
       setEditingSection(null);
       setEditingName(false);
       setEditedName(entity.name);
+      setEditingDescription(false);
+      setEditedDescription(entity.description || '');
       setSelectedTypes(entity.types || []);
     }
   }, [entity.id]);
@@ -195,6 +220,13 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
       setEditedName(entity.name);
     }
   }, [entity.name, editingName]);
+
+  // Sync edited description when entity description changes (e.g., after save)
+  useEffect(() => {
+    if (!editingDescription) {
+      setEditedDescription(entity.description || '');
+    }
+  }, [entity.description, editingDescription]);
 
   // Sync selectedTypes when entity.types changes (e.g., after save)
   useEffect(() => {
@@ -225,6 +257,22 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
       console.error('Failed to update name:', error);
       setEditedName(entity.name);
       setEditingName(false);
+    }
+  };
+
+  // Save entity description
+  const handleSaveDescription = async () => {
+    if (editedDescription === (entity.description || '')) {
+      setEditingDescription(false);
+      return;
+    }
+    try {
+      await updateEntity(entity.id, { description: editedDescription });
+      setEditingDescription(false);
+    } catch (error) {
+      console.error('Failed to update description:', error);
+      setEditedDescription(entity.description || '');
+      setEditingDescription(false);
     }
   };
 
@@ -268,7 +316,7 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
   };
 
   return (
-    <div>
+    <div ref={detailContainerRef}>
       {/* Banner Header with Brand Colour */}
       <div
         className="h-20 relative"
@@ -375,16 +423,68 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
           </div>
         </div>
 
-        {/* Description */}
-        {entity.description && (
-          <p className="text-sm text-gray-600 mb-4 max-w-2xl">{entity.description}</p>
-        )}
+        {/* Description - editable inline */}
+        <div className="mb-4">
+          {editingDescription ? (
+            <div className="flex flex-col gap-2">
+              <textarea
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setEditingDescription(false);
+                    setEditedDescription(entity.description || '');
+                  }
+                }}
+                autoFocus
+                rows={4}
+                placeholder="Add a description..."
+                className="w-full text-sm text-gray-600 bg-white border border-blue-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveDescription}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingDescription(false);
+                    setEditedDescription(entity.description || '');
+                  }}
+                  className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="group flex items-start gap-2">
+              {entity.description ? (
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{entity.description}</p>
+              ) : (
+                <p className="text-sm text-gray-400 italic">No description</p>
+              )}
+              <button
+                onClick={() => setEditingDescription(true)}
+                className="p-1 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                title="Edit description"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Tabs - always show for all entities */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="flex gap-6" aria-label="Tabs">
             <button
-              onClick={() => setActiveTab('about')}
+              type="button"
+              onClick={() => handleTabChange('about')}
               className={`py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'about'
                   ? 'border-blue-500 text-blue-600'
@@ -395,7 +495,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
             </button>
             {isDataFurnisher && (
               <button
-                onClick={() => setActiveTab('data-schema')}
+                type="button"
+                onClick={() => handleTabChange('data-schema')}
                 className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                   activeTab === 'data-schema'
                     ? 'border-blue-500 text-blue-600'
@@ -411,7 +512,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
               </button>
             )}
             <button
-              onClick={() => setActiveTab('assets')}
+              type="button"
+              onClick={() => handleTabChange('assets')}
               className={`py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                 activeTab === 'assets'
                   ? 'border-blue-500 text-blue-600'
