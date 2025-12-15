@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Entity, EntityType, FurnisherDataSchema } from '../../../types/entity';
+import type { Entity, EntityType, FurnisherDataSchema, EntityAsset } from '../../../types/entity';
 import { ENTITY_TYPE_CONFIG, migrateDataSchema } from '../../../types/entity';
 import { useEntityStore } from '../../../store/entityStore';
 import DataSourcesSection from './DataSourcesSection';
 import AssetsSection from './AssetsSection';
+
+const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5174';
 
 interface EntityDetailProps {
   entity: Entity;
@@ -120,6 +122,25 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
 
   // Track the current entity ID to reset tab only when switching entities
   const currentEntityIdRef = useRef(entity.id);
+
+  // Asset count for the tab badge
+  const [assetCount, setAssetCount] = useState(0);
+
+  // Fetch asset count for this entity
+  useEffect(() => {
+    const fetchAssetCount = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/assets?entityId=${entity.id}`, { credentials: 'include' });
+        if (res.ok) {
+          const assets: EntityAsset[] = await res.json();
+          setAssetCount(assets.length);
+        }
+      } catch (err) {
+        console.error('Failed to fetch asset count:', err);
+      }
+    };
+    fetchAssetCount();
+  }, [entity.id, activeTab]); // Re-fetch when switching to assets tab (in case assets were added)
 
   // Only reset to 'about' tab when switching to a different entity
   useEffect(() => {
@@ -365,6 +386,13 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               Assets
+              {assetCount > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  activeTab === 'assets' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {assetCount}
+                </span>
+              )}
             </button>
           </nav>
         </div>
