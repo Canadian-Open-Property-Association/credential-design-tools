@@ -83,8 +83,16 @@ export default function EntityList({ onEditEntity }: EntityListProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Search Bar */}
+      {/* Search Bar with Count */}
       <div className="px-3 py-3 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-gray-500">
+            {filteredEntities.length} {filteredEntities.length === 1 ? 'entity' : 'entities'}
+            {searchQuery && entities.length !== filteredEntities.length && (
+              <span className="text-gray-400"> of {entities.length}</span>
+            )}
+          </span>
+        </div>
         <div className="relative">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"

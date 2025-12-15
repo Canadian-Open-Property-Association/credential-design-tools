@@ -407,6 +407,10 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
             }
           >
             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500">Entity ID</label>
+                <p className="text-sm font-mono text-gray-800">{entity.id}</p>
+              </div>
               <div>
                 <label className="text-xs text-gray-500">Website</label>
                 {entity.website ? (
@@ -544,39 +548,34 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                   {/* Regions - only if data-furnisher is selected */}
                   {selectedTypes.includes('data-furnisher') && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-2">Regions Covered</label>
+                      <span className="block text-xs font-medium text-gray-600 mb-2">Regions Covered</span>
                       <div className="grid grid-cols-4 gap-2">
                         {['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'].map((region) => {
                           const isSelected = editFormData.regionsCovered?.includes(region);
                           return (
-                            <label
+                            <div
                               key={region}
-                              className={`flex items-center gap-2 px-3 py-1.5 rounded border cursor-pointer transition-colors ${
+                              onClick={() => {
+                                const current = editFormData.regionsCovered || [];
+                                if (isSelected) {
+                                  setEditFormData(prev => ({ ...prev, regionsCovered: current.filter(r => r !== region) }));
+                                } else {
+                                  setEditFormData(prev => ({ ...prev, regionsCovered: [...current, region] }));
+                                }
+                              }}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded border cursor-pointer transition-colors select-none ${
                                 isSelected
                                   ? 'bg-green-50 border-green-300 text-green-800'
                                   : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                               }`}
                             >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  const current = editFormData.regionsCovered || [];
-                                  if (e.target.checked) {
-                                    setEditFormData(prev => ({ ...prev, regionsCovered: [...current, region] }));
-                                  } else {
-                                    setEditFormData(prev => ({ ...prev, regionsCovered: current.filter(r => r !== region) }));
-                                  }
-                                }}
-                                className="sr-only"
-                              />
                               <span className="text-sm">{region}</span>
                               {isSelected && (
                                 <svg className="w-3 h-3 text-green-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
                               )}
-                            </label>
+                            </div>
                           );
                         })}
                       </div>
@@ -586,40 +585,35 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                   {/* Data Provider Types - only if data-furnisher is selected */}
                   {selectedTypes.includes('data-furnisher') && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-2">Data Provider Types</label>
+                      <span className="block text-xs font-medium text-gray-600 mb-2">Data Provider Types</span>
                       <div className="grid grid-cols-2 gap-2">
                         {ALL_DATA_PROVIDER_TYPES.map((providerType) => {
                           const isSelected = editFormData.dataProviderTypes?.includes(providerType);
                           const config = DATA_PROVIDER_TYPE_CONFIG[providerType];
                           return (
-                            <label
+                            <div
                               key={providerType}
-                              className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
+                              onClick={() => {
+                                const current = editFormData.dataProviderTypes || [];
+                                if (isSelected) {
+                                  setEditFormData(prev => ({ ...prev, dataProviderTypes: current.filter(t => t !== providerType) }));
+                                } else {
+                                  setEditFormData(prev => ({ ...prev, dataProviderTypes: [...current, providerType] }));
+                                }
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors select-none ${
                                 isSelected
                                   ? 'bg-blue-50 border-blue-300 text-blue-800'
                                   : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                               }`}
                             >
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  const current = editFormData.dataProviderTypes || [];
-                                  if (e.target.checked) {
-                                    setEditFormData(prev => ({ ...prev, dataProviderTypes: [...current, providerType] }));
-                                  } else {
-                                    setEditFormData(prev => ({ ...prev, dataProviderTypes: current.filter(t => t !== providerType) }));
-                                  }
-                                }}
-                                className="sr-only"
-                              />
                               <span className="text-sm">{config.label}</span>
                               {isSelected && (
                                 <svg className="w-3 h-3 text-blue-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
                               )}
-                            </label>
+                            </div>
                           );
                         })}
                       </div>
@@ -684,48 +678,28 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
             </EditableSection>
           </div>
 
-          {/* Metadata Footer */}
+          {/* Metadata Footer - outside grey box */}
           <div className="mt-6 pt-4 border-t border-gray-200">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="grid grid-cols-3 gap-4">
-                {/* Entity ID */}
-                <div>
-                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Entity ID</h4>
-                  <p className="text-sm font-mono text-gray-800">{entity.id}</p>
-                </div>
-
-                {/* Created Info */}
-                <div>
-                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Created</h4>
-                  <div className="space-y-0.5">
-                    {entity.createdAt && (
-                      <p className="text-sm text-gray-800">{formatDateTime(entity.createdAt)}</p>
-                    )}
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center gap-4">
+                {entity.createdAt && (
+                  <span>
+                    Created {formatDateTime(entity.createdAt)}
                     {entity.createdBy && (
-                      <p className="text-xs text-gray-500">
-                        by <span className="font-medium text-gray-700">{entity.createdBy.name || entity.createdBy.login}</span>
-                      </p>
+                      <span> by {entity.createdBy.name || entity.createdBy.login}</span>
                     )}
-                  </div>
-                </div>
-
-                {/* Updated Info */}
-                <div>
-                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Last Updated</h4>
-                  <div className="space-y-0.5">
-                    {entity.updatedAt && (
-                      <p className="text-sm text-gray-800">{formatDateTime(entity.updatedAt)}</p>
-                    )}
+                  </span>
+                )}
+              </div>
+              <div>
+                {entity.updatedAt && (
+                  <span>
+                    Updated {formatDateTime(entity.updatedAt)}
                     {entity.updatedBy && (
-                      <p className="text-xs text-gray-500">
-                        by <span className="font-medium text-gray-700">{entity.updatedBy.name || entity.updatedBy.login}</span>
-                      </p>
+                      <span> by {entity.updatedBy.name || entity.updatedBy.login}</span>
                     )}
-                    {!entity.updatedBy && entity.updatedAt && (
-                      <p className="text-xs text-gray-400 italic">No user information</p>
-                    )}
-                  </div>
-                </div>
+                  </span>
+                )}
               </div>
             </div>
           </div>

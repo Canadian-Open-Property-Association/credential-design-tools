@@ -119,15 +119,15 @@ export default function EntityManagerApp() {
         onSaveToRepo={() => setShowSaveToRepoModal(true)}
       />
 
-      {/* Main 2-panel layout */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main 2-panel layout with floating cards */}
+      <div className="flex-1 flex overflow-hidden p-4 gap-4">
         {/* Left Panel - Entity List */}
-        <div className="w-80 border-r border-gray-200 bg-white flex flex-col">
+        <div className="w-80 flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
           <EntityList onEditEntity={handleEditEntity} />
         </div>
 
         {/* Right Panel - Detail View */}
-        <div className="flex-1 bg-white flex flex-col overflow-y-auto">
+        <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-y-auto">
           {renderDetailPanel()}
         </div>
       </div>
