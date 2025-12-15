@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Entity, EntityType, FurnisherDataSchema, EntityAsset } from '../../../types/entity';
-import { ENTITY_TYPE_CONFIG, migrateDataSchema } from '../../../types/entity';
+import { ENTITY_TYPE_CONFIG, migrateDataSchema, DATA_PROVIDER_TYPE_CONFIG, ALL_DATA_PROVIDER_TYPES } from '../../../types/entity';
 import { useEntityStore } from '../../../store/entityStore';
 import DataSourcesSection from './DataSourcesSection';
 import AssetsSection from './AssetsSection';
@@ -116,8 +116,7 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Entity>>({});
 
-  // Entity types editing state
-  const [editingTypes, setEditingTypes] = useState(false);
+  // Entity types editing state (used in Entity Classification section)
   const [selectedTypes, setSelectedTypes] = useState<EntityType[]>(entity.types || []);
 
   // Track the current entity ID to reset tab only when switching entities
@@ -148,17 +147,16 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
       currentEntityIdRef.current = entity.id;
       setActiveTab('about');
       setEditingSection(null);
-      setEditingTypes(false);
       setSelectedTypes(entity.types || []);
     }
   }, [entity.id]);
 
   // Sync selectedTypes when entity.types changes (e.g., after save)
   useEffect(() => {
-    if (!editingTypes) {
+    if (editingSection !== 'classification') {
       setSelectedTypes(entity.types || []);
     }
-  }, [entity.types, editingTypes]);
+  }, [entity.types, editingSection]);
 
   const handleUpdateSchema = async (schema: FurnisherDataSchema) => {
     try {
@@ -192,7 +190,7 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
     setEditFormData(prev => ({ ...prev, [field]: value || undefined }));
   };
 
-  // Entity type editing handlers
+  // Entity type toggle handler (used in Entity Classification section)
   const toggleType = (type: EntityType) => {
     setSelectedTypes(prev => {
       if (prev.includes(type)) {
@@ -203,20 +201,6 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
         return [...prev, type];
       }
     });
-  };
-
-  const saveTypes = async () => {
-    try {
-      await updateEntity(entity.id, { types: selectedTypes });
-      setEditingTypes(false);
-    } catch (error) {
-      console.error('Failed to update entity types:', error);
-    }
-  };
-
-  const cancelTypeEditing = () => {
-    setEditingTypes(false);
-    setSelectedTypes(entity.types || []);
   };
 
   return (
@@ -263,80 +247,17 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
             {entity.name}
           </h2>
 
-          {/* Entity Types - View Mode */}
-          {!editingTypes && (
-            <div className="flex items-center gap-2 flex-wrap">
-              {entity.types?.map((type) => (
-                <span
-                  key={type}
-                  className={`text-xs px-2 py-0.5 rounded-full ${getTypeColor(type)}`}
-                >
-                  {ENTITY_TYPE_CONFIG[type]?.label}
-                </span>
-              ))}
-              <button
-                onClick={() => setEditingTypes(true)}
-                className="text-gray-400 hover:text-blue-600 p-1 transition-colors"
-                title="Edit entity types"
+          {/* Entity Types - Read-only badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {entity.types?.map((type) => (
+              <span
+                key={type}
+                className={`text-xs px-2 py-0.5 rounded-full ${getTypeColor(type)}`}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {/* Entity Types - Edit Mode */}
-          {editingTypes && (
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-600">Select entity types:</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={cancelTypeEditing}
-                    className="text-xs px-2 py-1 text-gray-600 hover:text-gray-800 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveTypes}
-                    className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {ALL_ENTITY_TYPES.map((type) => {
-                  const isSelected = selectedTypes.includes(type);
-                  const config = ENTITY_TYPE_CONFIG[type];
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => toggleType(type)}
-                      className={`text-xs px-3 py-1.5 rounded-full border-2 transition-all ${
-                        isSelected
-                          ? `${getTypeColor(type)} border-current`
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        {isSelected && (
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                        {config?.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {selectedTypes.length === 1 && (
-                <p className="text-xs text-gray-400 mt-2">At least one type is required</p>
-              )}
-            </div>
-          )}
+                {ENTITY_TYPE_CONFIG[type]?.label}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Description */}
@@ -400,256 +321,410 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
       {/* Tab Content: About */}
       {activeTab === 'about' && (
         <>
-          {/* Details Grid */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* Contact & Web Section */}
-            <EditableSection
-              title="Contact & Web"
-              isEditing={editingSection === 'contact'}
-              onEdit={() => startEditing('contact')}
-              onSave={saveSection}
-              onCancel={cancelEditing}
-              editContent={
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Website</label>
+          {/* Organization Details - Merged Contact & Technical */}
+          <EditableSection
+            title="Organization Details"
+            icon={
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            }
+            isEditing={editingSection === 'organization'}
+            onEdit={() => startEditing('organization')}
+            onSave={saveSection}
+            onCancel={cancelEditing}
+            editContent={
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Website</label>
+                  <input
+                    type="url"
+                    value={editFormData.website || ''}
+                    onChange={(e) => updateFormField('website', e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Contact Person</label>
+                  <input
+                    type="text"
+                    value={editFormData.contactName || ''}
+                    onChange={(e) => updateFormField('contactName', e.target.value)}
+                    placeholder="John Doe"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editFormData.contactEmail || ''}
+                    onChange={(e) => updateFormField('contactEmail', e.target.value)}
+                    placeholder="contact@example.com"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={editFormData.contactPhone || ''}
+                    onChange={(e) => updateFormField('contactPhone', e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">DID (Decentralized Identifier)</label>
+                  <input
+                    type="text"
+                    value={editFormData.did || ''}
+                    onChange={(e) => updateFormField('did', e.target.value)}
+                    placeholder="did:web:example.com"
+                    className="w-full px-3 py-1.5 text-sm font-mono border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Brand Colour</label>
+                  <div className="flex items-center gap-2">
                     <input
-                      type="url"
-                      value={editFormData.website || ''}
-                      onChange={(e) => updateFormField('website', e.target.value)}
-                      placeholder="https://example.com"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      type="color"
+                      value={editFormData.primaryColor || '#1a365d'}
+                      onChange={(e) => updateFormField('primaryColor', e.target.value)}
+                      className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Contact Person</label>
                     <input
                       type="text"
-                      value={editFormData.contactName || ''}
-                      onChange={(e) => updateFormField('contactName', e.target.value)}
-                      placeholder="John Doe"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={editFormData.contactEmail || ''}
-                      onChange={(e) => updateFormField('contactEmail', e.target.value)}
-                      placeholder="contact@example.com"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      value={editFormData.contactPhone || ''}
-                      onChange={(e) => updateFormField('contactPhone', e.target.value)}
-                      placeholder="+1 (555) 123-4567"
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      value={editFormData.primaryColor || ''}
+                      onChange={(e) => updateFormField('primaryColor', e.target.value)}
+                      placeholder="#1a365d"
+                      className="flex-1 px-3 py-1.5 text-sm font-mono border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
-              }
-            >
-              <div className="space-y-3">
-                {entity.website && (
-                  <div>
-                    <label className="text-xs text-gray-500">Website</label>
-                    <a
-                      href={entity.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-sm text-blue-600 hover:underline truncate"
-                    >
-                      {entity.website}
-                    </a>
-                  </div>
-                )}
-                {entity.contactName && (
-                  <div>
-                    <label className="text-xs text-gray-500">Contact Person</label>
-                    <p className="text-sm text-gray-800">{entity.contactName}</p>
-                  </div>
-                )}
-                {entity.contactEmail && (
-                  <div>
-                    <label className="text-xs text-gray-500">Email</label>
-                    <a
-                      href={`mailto:${entity.contactEmail}`}
-                      className="block text-sm text-blue-600 hover:underline"
-                    >
-                      {entity.contactEmail}
-                    </a>
-                  </div>
-                )}
-                {entity.contactPhone && (
-                  <div>
-                    <label className="text-xs text-gray-500">Phone</label>
-                    <a
-                      href={`tel:${entity.contactPhone}`}
-                      className="block text-sm text-blue-600 hover:underline"
-                    >
-                      {entity.contactPhone}
-                    </a>
-                  </div>
-                )}
-                {!entity.website && !entity.contactEmail && !entity.contactName && !entity.contactPhone && (
-                  <p className="text-sm text-gray-400 italic">No contact information</p>
+              </div>
+            }
+          >
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div>
+                <label className="text-xs text-gray-500">Website</label>
+                {entity.website ? (
+                  <a
+                    href={entity.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-sm text-blue-600 hover:underline truncate"
+                  >
+                    {entity.website}
+                  </a>
+                ) : (
+                  <p className="text-sm text-gray-400">—</p>
                 )}
               </div>
-            </EditableSection>
+              <div>
+                <label className="text-xs text-gray-500">Contact Person</label>
+                <p className="text-sm text-gray-800">{entity.contactName || <span className="text-gray-400">—</span>}</p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Email</label>
+                {entity.contactEmail ? (
+                  <a
+                    href={`mailto:${entity.contactEmail}`}
+                    className="block text-sm text-blue-600 hover:underline"
+                  >
+                    {entity.contactEmail}
+                  </a>
+                ) : (
+                  <p className="text-sm text-gray-400">—</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Phone</label>
+                {entity.contactPhone ? (
+                  <a
+                    href={`tel:${entity.contactPhone}`}
+                    className="block text-sm text-blue-600 hover:underline"
+                  >
+                    {entity.contactPhone}
+                  </a>
+                ) : (
+                  <p className="text-sm text-gray-400">—</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">DID</label>
+                <p className="text-sm font-mono text-gray-800 break-all">{entity.did || <span className="text-gray-400 font-sans">—</span>}</p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Brand Colour</label>
+                {entity.primaryColor ? (
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-5 h-5 rounded border border-gray-200"
+                      style={{ backgroundColor: entity.primaryColor }}
+                    />
+                    <span className="text-sm font-mono text-gray-800">{entity.primaryColor}</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">—</p>
+                )}
+              </div>
+            </div>
+          </EditableSection>
 
-            {/* Technical Identity Section */}
+          {/* Entity Classification Section */}
+          <div className="mt-6">
             <EditableSection
-              title="Technical Identity"
-              isEditing={editingSection === 'technical'}
-              onEdit={() => startEditing('technical')}
-              onSave={saveSection}
-              onCancel={cancelEditing}
+              title="Entity Classification"
+              icon={
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+              }
+              isEditing={editingSection === 'classification'}
+              onEdit={() => {
+                setEditingSection('classification');
+                setSelectedTypes(entity.types || []);
+                setEditFormData({ ...entity });
+              }}
+              onSave={async () => {
+                try {
+                  await updateEntity(entity.id, {
+                    types: selectedTypes,
+                    regionsCovered: editFormData.regionsCovered,
+                    dataProviderTypes: editFormData.dataProviderTypes
+                  });
+                  setEditingSection(null);
+                  setEditFormData({});
+                } catch (error) {
+                  console.error('Failed to update entity:', error);
+                }
+              }}
+              onCancel={() => {
+                setEditingSection(null);
+                setSelectedTypes(entity.types || []);
+                setEditFormData({});
+              }}
               editContent={
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Entity ID</label>
-                    <p className="text-sm font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">{entity.id}</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Decentralized Identifier (DID)</label>
-                    <input
-                      type="text"
-                      value={editFormData.did || ''}
-                      onChange={(e) => updateFormField('did', e.target.value)}
-                      placeholder="did:web:example.com"
-                      className="w-full px-3 py-1.5 text-sm font-mono border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Logo URI</label>
-                    <input
-                      type="text"
-                      value={editFormData.logoUri || ''}
-                      onChange={(e) => updateFormField('logoUri', e.target.value)}
-                      placeholder="/assets/logo.png or https://..."
-                      className="w-full px-3 py-1.5 text-sm font-mono border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Brand Colour</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={editFormData.primaryColor || '#1a365d'}
-                        onChange={(e) => updateFormField('primaryColor', e.target.value)}
-                        className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={editFormData.primaryColor || ''}
-                        onChange={(e) => updateFormField('primaryColor', e.target.value)}
-                        placeholder="#1a365d"
-                        className="flex-1 px-3 py-1.5 text-sm font-mono border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
+                    <label className="block text-xs font-medium text-gray-600 mb-2">Entity Types</label>
+                    <div className="flex flex-wrap gap-2">
+                      {ALL_ENTITY_TYPES.map((type) => {
+                        const isSelected = selectedTypes.includes(type);
+                        const config = ENTITY_TYPE_CONFIG[type];
+                        return (
+                          <button
+                            key={type}
+                            onClick={() => toggleType(type)}
+                            className={`text-xs px-3 py-1.5 rounded-full border-2 transition-all ${
+                              isSelected
+                                ? `${getTypeColor(type)} border-current`
+                                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              {isSelected && (
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                              {config?.label}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
+                    {selectedTypes.length === 1 && (
+                      <p className="text-xs text-gray-400 mt-2">At least one type is required</p>
+                    )}
                   </div>
+
+                  {/* Regions - only if data-furnisher is selected */}
+                  {selectedTypes.includes('data-furnisher') && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-2">Regions Covered</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'].map((region) => {
+                          const isSelected = editFormData.regionsCovered?.includes(region);
+                          return (
+                            <label
+                              key={region}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded border cursor-pointer transition-colors ${
+                                isSelected
+                                  ? 'bg-green-50 border-green-300 text-green-800'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  const current = editFormData.regionsCovered || [];
+                                  if (e.target.checked) {
+                                    setEditFormData(prev => ({ ...prev, regionsCovered: [...current, region] }));
+                                  } else {
+                                    setEditFormData(prev => ({ ...prev, regionsCovered: current.filter(r => r !== region) }));
+                                  }
+                                }}
+                                className="sr-only"
+                              />
+                              <span className="text-sm">{region}</span>
+                              {isSelected && (
+                                <svg className="w-3 h-3 text-green-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Data Provider Types - only if data-furnisher is selected */}
+                  {selectedTypes.includes('data-furnisher') && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-2">Data Provider Types</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {ALL_DATA_PROVIDER_TYPES.map((providerType) => {
+                          const isSelected = editFormData.dataProviderTypes?.includes(providerType);
+                          const config = DATA_PROVIDER_TYPE_CONFIG[providerType];
+                          return (
+                            <label
+                              key={providerType}
+                              className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors ${
+                                isSelected
+                                  ? 'bg-blue-50 border-blue-300 text-blue-800'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  const current = editFormData.dataProviderTypes || [];
+                                  if (e.target.checked) {
+                                    setEditFormData(prev => ({ ...prev, dataProviderTypes: [...current, providerType] }));
+                                  } else {
+                                    setEditFormData(prev => ({ ...prev, dataProviderTypes: current.filter(t => t !== providerType) }));
+                                  }
+                                }}
+                                className="sr-only"
+                              />
+                              <span className="text-sm">{config.label}</span>
+                              {isSelected && (
+                                <svg className="w-3 h-3 text-blue-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               }
             >
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-gray-500">Entity ID</label>
-                  <p className="text-sm font-mono text-gray-800">{entity.id}</p>
+                  <label className="text-xs text-gray-500">Entity Types</label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {entity.types?.map((type) => (
+                      <span
+                        key={type}
+                        className={`text-xs px-2 py-0.5 rounded-full ${getTypeColor(type)}`}
+                      >
+                        {ENTITY_TYPE_CONFIG[type]?.label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                {entity.did && (
-                  <div>
-                    <label className="text-xs text-gray-500">Decentralized Identifier (DID)</label>
-                    <p className="text-sm font-mono text-gray-800 break-all">{entity.did}</p>
-                  </div>
-                )}
-                {entity.logoUri && (
-                  <div>
-                    <label className="text-xs text-gray-500">Logo URI</label>
-                    <p className="text-sm font-mono text-gray-600 break-all">{entity.logoUri}</p>
-                  </div>
-                )}
-                {entity.primaryColor && (
-                  <div>
-                    <label className="text-xs text-gray-500">Brand Colour</label>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded border border-gray-200"
-                        style={{ backgroundColor: entity.primaryColor }}
-                      />
-                      <span className="text-sm font-mono text-gray-800">{entity.primaryColor}</span>
+                {isDataFurnisher && (
+                  <>
+                    <div>
+                      <label className="text-xs text-gray-500">Regions Covered</label>
+                      {entity.regionsCovered && entity.regionsCovered.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {entity.regionsCovered.map((region) => (
+                            <span
+                              key={region}
+                              className="px-2 py-0.5 text-xs bg-green-50 border border-green-200 text-green-800 rounded"
+                            >
+                              {region}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400">No regions specified</p>
+                      )}
                     </div>
-                  </div>
-                )}
-                {!entity.did && !entity.logoUri && !entity.primaryColor && (
-                  <p className="text-sm text-gray-400 italic">No technical details configured</p>
+                    <div>
+                      <label className="text-xs text-gray-500">Data Provider Types</label>
+                      {entity.dataProviderTypes && entity.dataProviderTypes.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {entity.dataProviderTypes.map((providerType) => (
+                            <span
+                              key={providerType}
+                              className="px-2 py-0.5 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded"
+                            >
+                              {DATA_PROVIDER_TYPE_CONFIG[providerType]?.label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400">No data provider types specified</p>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </EditableSection>
           </div>
 
-          {/* Regions Covered - Only shown for Data Furnishers with regions */}
-          {entity.regionsCovered && entity.regionsCovered.length > 0 && (
-            <div className="mt-6 bg-green-50 rounded-lg p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Regions Covered
-                <span className="ml-auto text-xs font-normal text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                  Data Furnisher
-                </span>
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {entity.regionsCovered.map((region) => (
-                  <span
-                    key={region}
-                    className="px-2 py-1 text-sm bg-white border border-green-200 text-green-800 rounded-lg"
-                  >
-                    {region}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Metadata Footer */}
           <div className="mt-6 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Created Info */}
-              <div className="bg-gray-50 rounded-lg p-3">
-                <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Created</h4>
-                <div className="space-y-1">
-                  {entity.createdAt && (
-                    <p className="text-sm text-gray-800">{formatDateTime(entity.createdAt)}</p>
-                  )}
-                  {entity.createdBy && (
-                    <p className="text-xs text-gray-500">
-                      by <span className="font-medium text-gray-700">{entity.createdBy.name || entity.createdBy.login}</span>
-                    </p>
-                  )}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-3 gap-4">
+                {/* Entity ID */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Entity ID</h4>
+                  <p className="text-sm font-mono text-gray-800">{entity.id}</p>
                 </div>
-              </div>
 
-              {/* Updated Info */}
-              <div className="bg-gray-50 rounded-lg p-3">
-                <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Last Updated</h4>
-                <div className="space-y-1">
-                  {entity.updatedAt && (
-                    <p className="text-sm text-gray-800">{formatDateTime(entity.updatedAt)}</p>
-                  )}
-                  {entity.updatedBy && (
-                    <p className="text-xs text-gray-500">
-                      by <span className="font-medium text-gray-700">{entity.updatedBy.name || entity.updatedBy.login}</span>
-                    </p>
-                  )}
-                  {!entity.updatedBy && entity.updatedAt && (
-                    <p className="text-xs text-gray-400 italic">No user information</p>
-                  )}
+                {/* Created Info */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Created</h4>
+                  <div className="space-y-0.5">
+                    {entity.createdAt && (
+                      <p className="text-sm text-gray-800">{formatDateTime(entity.createdAt)}</p>
+                    )}
+                    {entity.createdBy && (
+                      <p className="text-xs text-gray-500">
+                        by <span className="font-medium text-gray-700">{entity.createdBy.name || entity.createdBy.login}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Updated Info */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 uppercase mb-1">Last Updated</h4>
+                  <div className="space-y-0.5">
+                    {entity.updatedAt && (
+                      <p className="text-sm text-gray-800">{formatDateTime(entity.updatedAt)}</p>
+                    )}
+                    {entity.updatedBy && (
+                      <p className="text-xs text-gray-500">
+                        by <span className="font-medium text-gray-700">{entity.updatedBy.name || entity.updatedBy.login}</span>
+                      </p>
+                    )}
+                    {!entity.updatedBy && entity.updatedAt && (
+                      <p className="text-xs text-gray-400 italic">No user information</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

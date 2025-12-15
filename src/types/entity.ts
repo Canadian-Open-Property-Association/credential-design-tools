@@ -4,6 +4,18 @@ export type EntityType = 'issuer' | 'data-furnisher' | 'network-partner' | 'serv
 
 export type EntityStatus = 'active' | 'pending' | 'inactive';
 
+// Data provider types - categories of data that a data furnisher can provide
+export type DataProviderType =
+  | 'identity'
+  | 'title-ownership'
+  | 'assessment'
+  | 'market-value-estimate'
+  | 'cost-of-ownership'
+  | 'mortgage-home-equity'
+  | 'municipal'
+  | 'regulatory'
+  | 'employment';
+
 export interface UserRef {
   id: string;
   login: string;
@@ -113,6 +125,7 @@ export interface Entity {
 
   // Data Furnisher specific (only relevant if types includes 'data-furnisher')
   regionsCovered?: string[];     // Regions/provinces this entity covers
+  dataProviderTypes?: DataProviderType[];  // Types of data this furnisher provides
   dataSchema?: FurnisherDataSchema;  // Field definitions for this furnisher's data
 
   // Metadata
@@ -146,6 +159,59 @@ export const ENTITY_TYPE_CONFIG: Record<EntityType, { label: string; pluralLabel
     color: 'orange',
   },
 };
+
+// Data provider type display configuration
+export const DATA_PROVIDER_TYPE_CONFIG: Record<DataProviderType, { label: string; description: string }> = {
+  'identity': {
+    label: 'Identity',
+    description: 'Identity verification and personal information',
+  },
+  'title-ownership': {
+    label: 'Title/Ownership',
+    description: 'Property title and ownership records',
+  },
+  'assessment': {
+    label: 'Assessment',
+    description: 'Property assessment and valuation data',
+  },
+  'market-value-estimate': {
+    label: 'Market Value Estimate',
+    description: 'Real estate market valuations',
+  },
+  'cost-of-ownership': {
+    label: 'Cost of Ownership',
+    description: 'Ongoing property ownership costs',
+  },
+  'mortgage-home-equity': {
+    label: 'Mortgage & Home Equity',
+    description: 'Mortgage and home equity information',
+  },
+  'municipal': {
+    label: 'Municipal',
+    description: 'Municipal government data',
+  },
+  'regulatory': {
+    label: 'Regulatory',
+    description: 'Regulatory compliance and licensing',
+  },
+  'employment': {
+    label: 'Employment',
+    description: 'Employment and income verification',
+  },
+};
+
+// All available data provider types
+export const ALL_DATA_PROVIDER_TYPES: DataProviderType[] = [
+  'identity',
+  'title-ownership',
+  'assessment',
+  'market-value-estimate',
+  'cost-of-ownership',
+  'mortgage-home-equity',
+  'municipal',
+  'regulatory',
+  'employment',
+];
 
 // Status display configuration
 export const ENTITY_STATUS_CONFIG: Record<EntityStatus, { label: string; color: string }> = {

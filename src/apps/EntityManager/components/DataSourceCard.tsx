@@ -23,7 +23,7 @@ const DATA_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function DataSourceCard({ entityId, source, onEdit, onDelete, onUpdateSource }: DataSourceCardProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showFieldForm, setShowFieldForm] = useState(false);
   const [editingField, setEditingField] = useState<FurnisherField | null>(null);
 
