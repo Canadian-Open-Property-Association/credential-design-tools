@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useEntityStore } from '../../../store/entityStore';
-import type { Entity, EntityStatus, DataProviderType } from '../../../types/entity';
-import { ENTITY_STATUS_CONFIG, DATA_PROVIDER_TYPE_CONFIG, ALL_DATA_PROVIDER_TYPES } from '../../../types/entity';
+import { useFurnisherSettingsStore } from '../../../store/furnisherSettingsStore';
+import type { Entity } from '../../../types/entity';
 import { CANADIAN_REGIONS } from '../../../constants/regions';
 import AssetLibrary from '../../../components/AssetLibrary/AssetLibrary';
 
@@ -47,6 +47,7 @@ function generateSlug(name: string): string {
 
 export default function EntityForm({ entityId, onClose, onCreated }: EntityFormProps) {
   const { entities, createEntity, updateEntity } = useEntityStore();
+  const { settings } = useFurnisherSettingsStore();
   const [formData, setFormData] = useState<FormData>(defaultFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,12 +89,12 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
   };
 
   // Handle data provider type toggle
-  const handleDataProviderTypeToggle = (providerType: DataProviderType) => {
+  const handleDataProviderTypeToggle = (providerType: string) => {
     setFormData((prev) => ({
       ...prev,
-      dataProviderTypes: prev.dataProviderTypes?.includes(providerType)
+      dataProviderTypes: prev.dataProviderTypes?.includes(providerType as never)
         ? prev.dataProviderTypes.filter((t) => t !== providerType)
-        : [...(prev.dataProviderTypes || []), providerType],
+        : [...(prev.dataProviderTypes || []), providerType as never],
     }));
   };
 
@@ -214,9 +215,9 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {(Object.keys(ENTITY_STATUS_CONFIG) as EntityStatus[]).map((status) => (
-                    <option key={status} value={status}>
-                      {ENTITY_STATUS_CONFIG[status].label}
+                  {(settings?.entityStatuses || []).map((status) => (
+                    <option key={status.id} value={status.id}>
+                      {status.label}
                     </option>
                   ))}
                 </select>
@@ -454,29 +455,29 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
                     Select the types of data this furnisher provides
                   </p>
                   <div className="grid grid-cols-2 gap-2">
-                    {ALL_DATA_PROVIDER_TYPES.map((providerType) => (
+                    {(settings?.dataProviderTypes || []).map((providerType) => (
                       <label
-                        key={providerType}
+                        key={providerType.id}
                         className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors text-sm ${
-                          formData.dataProviderTypes?.includes(providerType)
+                          formData.dataProviderTypes?.includes(providerType.id as never)
                             ? 'border-blue-500 bg-blue-50 text-blue-700'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         <input
                           type="checkbox"
-                          checked={formData.dataProviderTypes?.includes(providerType) || false}
-                          onChange={() => handleDataProviderTypeToggle(providerType)}
+                          checked={formData.dataProviderTypes?.includes(providerType.id as never) || false}
+                          onChange={() => handleDataProviderTypeToggle(providerType.id)}
                           className="sr-only"
                         />
                         <span
                           className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
-                            formData.dataProviderTypes?.includes(providerType)
+                            formData.dataProviderTypes?.includes(providerType.id as never)
                               ? 'bg-blue-500 border-blue-500'
                               : 'border-gray-400'
                           }`}
                         >
-                          {formData.dataProviderTypes?.includes(providerType) && (
+                          {formData.dataProviderTypes?.includes(providerType.id as never) && (
                             <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                               <path
                                 fillRule="evenodd"
@@ -486,7 +487,7 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
                             </svg>
                           )}
                         </span>
-                        <span className="truncate">{DATA_PROVIDER_TYPE_CONFIG[providerType].label}</span>
+                        <span className="truncate">{providerType.label}</span>
                       </label>
                     ))}
                   </div>

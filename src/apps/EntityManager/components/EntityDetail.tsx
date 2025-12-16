@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Entity, FurnisherDataSchema, EntityAsset } from '../../../types/entity';
-import { migrateDataSchema, DATA_PROVIDER_TYPE_CONFIG, ALL_DATA_PROVIDER_TYPES } from '../../../types/entity';
+import { migrateDataSchema } from '../../../types/entity';
 import { useEntityStore } from '../../../store/entityStore';
 import { useFurnisherSettingsStore } from '../../../store/furnisherSettingsStore';
 import { CANADIAN_REGIONS, normalizeRegions } from '../../../constants/regions';
@@ -795,18 +795,17 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                   <div>
                     <span className="block text-xs font-medium text-gray-600 mb-2">Data Provider Types</span>
                     <div className="grid grid-cols-2 gap-2">
-                      {ALL_DATA_PROVIDER_TYPES.map((providerType) => {
-                        const isSelected = editFormData.dataProviderTypes?.includes(providerType);
-                        const config = DATA_PROVIDER_TYPE_CONFIG[providerType];
+                      {(settings?.dataProviderTypes || []).map((providerType) => {
+                        const isSelected = editFormData.dataProviderTypes?.includes(providerType.id as never);
                         return (
                           <div
-                            key={providerType}
+                            key={providerType.id}
                             onClick={() => {
                               const current = editFormData.dataProviderTypes || [];
                               if (isSelected) {
-                                setEditFormData(prev => ({ ...prev, dataProviderTypes: current.filter(t => t !== providerType) }));
+                                setEditFormData(prev => ({ ...prev, dataProviderTypes: current.filter(t => t !== providerType.id) as never[] }));
                               } else {
-                                setEditFormData(prev => ({ ...prev, dataProviderTypes: [...current, providerType] }));
+                                setEditFormData(prev => ({ ...prev, dataProviderTypes: [...current, providerType.id] as never[] }));
                               }
                             }}
                             className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors select-none ${
@@ -815,7 +814,7 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                                 : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                             }`}
                           >
-                            <span className="text-sm">{config.label}</span>
+                            <span className="text-sm">{providerType.label}</span>
                             {isSelected && (
                               <svg className="w-3 h-3 text-blue-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -851,14 +850,17 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                   <label className="text-xs text-gray-500">Data Provider Types</label>
                   {entity.dataProviderTypes && entity.dataProviderTypes.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 mt-1">
-                      {entity.dataProviderTypes.map((providerType) => (
-                        <span
-                          key={providerType}
-                          className="px-2 py-0.5 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded"
-                        >
-                          {DATA_PROVIDER_TYPE_CONFIG[providerType]?.label}
-                        </span>
-                      ))}
+                      {entity.dataProviderTypes.map((providerType) => {
+                        const providerConfig = settings?.dataProviderTypes?.find(t => t.id === providerType);
+                        return (
+                          <span
+                            key={providerType}
+                            className="px-2 py-0.5 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded"
+                          >
+                            {providerConfig?.label || providerType}
+                          </span>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-sm text-gray-400">No data provider types specified</p>
