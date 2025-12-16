@@ -1479,6 +1479,16 @@ const getDefaultFurnisherSettings = () => ({
     { id: 'data-furnisher', label: 'Data Furnisher', description: 'Organization that provides data' },
     { id: 'service-provider', label: 'Service Provider', description: 'Organization that provides services' },
   ],
+  serviceProviderTypes: [
+    { id: 'insurance', label: 'Insurance', description: 'Insurance providers' },
+    { id: 'mortgage', label: 'Mortgage', description: 'Mortgage lenders and brokers' },
+    { id: 'legal', label: 'Legal', description: 'Legal services and law firms' },
+    { id: 'real-estate', label: 'Real Estate', description: 'Real estate agents and brokerages' },
+    { id: 'financial-planning', label: 'Financial Planning', description: 'Financial advisors and planners' },
+    { id: 'home-inspection', label: 'Home Inspection', description: 'Home inspection services' },
+    { id: 'appraisal', label: 'Appraisal', description: 'Property appraisal services' },
+    { id: 'moving', label: 'Moving', description: 'Moving and relocation services' },
+  ],
 });
 
 // Initialize furnisher settings file if it doesn't exist
@@ -1499,6 +1509,7 @@ const loadFurnisherSettings = () => {
     dataProviderTypes: data.dataProviderTypes || defaults.dataProviderTypes,
     entityStatuses: data.entityStatuses || defaults.entityStatuses,
     entityTypes: data.entityTypes || defaults.entityTypes,
+    serviceProviderTypes: data.serviceProviderTypes || defaults.serviceProviderTypes,
   };
 };
 
@@ -1526,6 +1537,7 @@ router.put('/furnisher-settings', requireAuth, (req, res) => {
       dataProviderTypes: req.body.dataProviderTypes ?? currentSettings.dataProviderTypes,
       entityStatuses: req.body.entityStatuses ?? currentSettings.entityStatuses,
       entityTypes: req.body.entityTypes ?? currentSettings.entityTypes,
+      serviceProviderTypes: req.body.serviceProviderTypes ?? currentSettings.serviceProviderTypes,
     };
 
     // Validate data provider types
@@ -1551,6 +1563,15 @@ router.put('/furnisher-settings', requireAuth, (req, res) => {
       for (const type of updatedSettings.entityTypes) {
         if (!type.id || !type.label) {
           return res.status(400).json({ error: 'Each entity type must have an id and label' });
+        }
+      }
+    }
+
+    // Validate service provider types
+    if (updatedSettings.serviceProviderTypes) {
+      for (const type of updatedSettings.serviceProviderTypes) {
+        if (!type.id || !type.label) {
+          return res.status(400).json({ error: 'Each service provider type must have an id and label' });
         }
       }
     }

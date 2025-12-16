@@ -36,6 +36,7 @@ interface MapViewProps {
 export default function MapView({ entities, onSelectEntity }: MapViewProps) {
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
   const [selectedDataTypes, setSelectedDataTypes] = useState<DataProviderType[]>([]);
+  const [selectedEntityTypes, setSelectedEntityTypes] = useState<string[]>([]);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [logoAssets, setLogoAssets] = useState<Record<string, string>>({});
   const { settings } = useFurnisherSettingsStore();
@@ -100,13 +101,24 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
     }));
   }, [settings]);
 
-  // Filter entities by selected data provider types
+  // Filter entities by selected entity types and data provider types
   const filteredEntities = useMemo(() => {
-    if (selectedDataTypes.length === 0) return entities;
-    return entities.filter(e =>
-      e.dataProviderTypes?.some(t => selectedDataTypes.includes(t))
-    );
-  }, [entities, selectedDataTypes]);
+    let result = entities;
+
+    // Filter by entity type
+    if (selectedEntityTypes.length > 0) {
+      result = result.filter(e => e.entityType && selectedEntityTypes.includes(e.entityType));
+    }
+
+    // Filter by data provider types
+    if (selectedDataTypes.length > 0) {
+      result = result.filter(e =>
+        e.dataProviderTypes?.some(t => selectedDataTypes.includes(t))
+      );
+    }
+
+    return result;
+  }, [entities, selectedEntityTypes, selectedDataTypes]);
 
   // Count furnishers per province
   const provinceCount = useMemo(() => {
@@ -123,12 +135,12 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
     return counts;
   }, [filteredEntities]);
 
-  // Get furnishers for selected province
+  // Get furnishers for selected province and sort alphabetically
   const provinceFurnishers = useMemo(() => {
-    if (!selectedProvince) return filteredEntities;
-    return filteredEntities.filter(e =>
-      normalizeRegions(e.regionsCovered).includes(selectedProvince)
-    );
+    const filtered = !selectedProvince
+      ? filteredEntities
+      : filteredEntities.filter(e => normalizeRegions(e.regionsCovered).includes(selectedProvince));
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
   }, [filteredEntities, selectedProvince]);
 
   // Get max count for color scaling
@@ -157,6 +169,15 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
     const bucketSize = maxCount / 7;
     const bucket = Math.min(Math.ceil(count / bucketSize), 7);
     return COLOR_SCALE[bucket];
+  };
+
+  // Toggle entity type filter
+  const toggleEntityType = (type: string) => {
+    setSelectedEntityTypes(prev =>
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
   };
 
   // Toggle data type filter
@@ -233,6 +254,11 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-900 text-sm truncate">{entity.name}</div>
                         <div className="flex flex-wrap gap-1 mt-0.5">
+                          {entity.entityType && (
+                            <span className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded">
+                              {settings?.entityTypes?.find(t => t.id === entity.entityType)?.label || entity.entityType}
+                            </span>
+                          )}
                           {entity.dataProviderTypes?.slice(0, 2).map(type => (
                             <span
                               key={type}
@@ -286,9 +312,28 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
               <span className="text-xs text-gray-500">None → High</span>
             </div>
           </div>
+          {/* Entity Type Filters */}
+          {settings?.entityTypes && settings.entityTypes.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span className="text-xs text-gray-500 mr-1">Entity type:</span>
+              {settings.entityTypes.map(type => (
+                <button
+                  key={type.id}
+                  onClick={() => toggleEntityType(type.id)}
+                  className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                    selectedEntityTypes.includes(type.id)
+                      ? 'bg-purple-500 text-white border-purple-500'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Data Type Filters */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-gray-500 mr-1">Filter by type:</span>
+            <span className="text-xs text-gray-500 mr-1">Data type:</span>
             {dataProviderTypes.map(type => (
               <button
                 key={type.id}
@@ -302,10 +347,11 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
                 {type.label}
               </button>
             ))}
-            {(selectedDataTypes.length > 0 || selectedProvince || selectedEntityId) && (
+            {(selectedDataTypes.length > 0 || selectedEntityTypes.length > 0 || selectedProvince || selectedEntityId) && (
               <button
                 onClick={() => {
                   setSelectedDataTypes([]);
+                  setSelectedEntityTypes([]);
                   setSelectedProvince(null);
                   setSelectedEntityId(null);
                 }}

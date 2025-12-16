@@ -28,6 +28,7 @@ const defaultFormData: FormData = {
   entityType: '',
   regionsCovered: [],
   dataProviderTypes: [],
+  serviceProviderTypes: [],
 };
 
 // Generate a slug from name with copa- prefix
@@ -75,6 +76,7 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
           entityType: entity.entityType || '',
           regionsCovered: entity.regionsCovered || [],
           dataProviderTypes: entity.dataProviderTypes || [],
+          serviceProviderTypes: entity.serviceProviderTypes || [],
         });
       }
     }
@@ -97,6 +99,16 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
       dataProviderTypes: prev.dataProviderTypes?.includes(providerType as never)
         ? prev.dataProviderTypes.filter((t) => t !== providerType)
         : [...(prev.dataProviderTypes || []), providerType as never],
+    }));
+  };
+
+  // Handle service provider type toggle
+  const handleServiceProviderTypeToggle = (providerType: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      serviceProviderTypes: prev.serviceProviderTypes?.includes(providerType)
+        ? prev.serviceProviderTypes.filter((t) => t !== providerType)
+        : [...(prev.serviceProviderTypes || []), providerType],
     }));
   };
 
@@ -232,7 +244,16 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
                   <select
                     name="entityType"
                     value={formData.entityType || ''}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      const newEntityType = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        entityType: newEntityType,
+                        // Clear provider types when switching entity types
+                        dataProviderTypes: newEntityType === 'data-furnisher' ? prev.dataProviderTypes : [],
+                        serviceProviderTypes: newEntityType === 'service-provider' ? prev.serviceProviderTypes : [],
+                      }));
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select type...</option>
@@ -468,57 +489,113 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
                   </p>
                 )}
 
-                {/* Data Provider Types */}
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data Provider Types
-                  </label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Select the types of data this furnisher provides
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(settings?.dataProviderTypes || []).map((providerType) => (
-                      <label
-                        key={providerType.id}
-                        className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors text-sm ${
-                          formData.dataProviderTypes?.includes(providerType.id as never)
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.dataProviderTypes?.includes(providerType.id as never) || false}
-                          onChange={() => handleDataProviderTypeToggle(providerType.id)}
-                          className="sr-only"
-                        />
-                        <span
-                          className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                {/* Data Provider Types - only show for data-furnisher */}
+                {formData.entityType === 'data-furnisher' && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data Provider Types
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Select the types of data this furnisher provides
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(settings?.dataProviderTypes || []).map((providerType) => (
+                        <label
+                          key={providerType.id}
+                          className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors text-sm ${
                             formData.dataProviderTypes?.includes(providerType.id as never)
-                              ? 'bg-blue-500 border-blue-500'
-                              : 'border-gray-400'
+                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
-                          {formData.dataProviderTypes?.includes(providerType.id as never) && (
-                            <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path
-                                fillRule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
-                        </span>
-                        <span className="truncate">{providerType.label}</span>
-                      </label>
-                    ))}
+                          <input
+                            type="checkbox"
+                            checked={formData.dataProviderTypes?.includes(providerType.id as never) || false}
+                            onChange={() => handleDataProviderTypeToggle(providerType.id)}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                              formData.dataProviderTypes?.includes(providerType.id as never)
+                                ? 'bg-blue-500 border-blue-500'
+                                : 'border-gray-400'
+                            }`}
+                          >
+                            {formData.dataProviderTypes?.includes(providerType.id as never) && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          <span className="truncate">{providerType.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {formData.dataProviderTypes && formData.dataProviderTypes.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        {formData.dataProviderTypes.length} type{formData.dataProviderTypes.length !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
                   </div>
-                  {formData.dataProviderTypes && formData.dataProviderTypes.length > 0 && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      {formData.dataProviderTypes.length} type{formData.dataProviderTypes.length !== 1 ? 's' : ''} selected
+                )}
+
+                {/* Service Provider Types - only show for service-provider */}
+                {formData.entityType === 'service-provider' && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Service Provider Types
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Select the types of services this provider offers
                     </p>
-                  )}
-                </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(settings?.serviceProviderTypes || []).map((providerType) => (
+                        <label
+                          key={providerType.id}
+                          className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors text-sm ${
+                            formData.serviceProviderTypes?.includes(providerType.id)
+                              ? 'border-orange-500 bg-orange-50 text-orange-700'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.serviceProviderTypes?.includes(providerType.id) || false}
+                            onChange={() => handleServiceProviderTypeToggle(providerType.id)}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                              formData.serviceProviderTypes?.includes(providerType.id)
+                                ? 'bg-orange-500 border-orange-500'
+                                : 'border-gray-400'
+                            }`}
+                          >
+                            {formData.serviceProviderTypes?.includes(providerType.id) && (
+                              <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          <span className="truncate">{providerType.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {formData.serviceProviderTypes && formData.serviceProviderTypes.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        {formData.serviceProviderTypes.length} type{formData.serviceProviderTypes.length !== 1 ? 's' : ''} selected
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </form>

@@ -126,7 +126,8 @@ export interface Entity {
 
   // Data Furnisher fields
   regionsCovered?: string[];     // Regions/provinces this entity covers
-  dataProviderTypes?: DataProviderType[];  // Types of data this furnisher provides
+  dataProviderTypes?: DataProviderType[];  // Types of data this furnisher provides (furnishers only)
+  serviceProviderTypes?: string[];  // Types of services this provider offers (service providers only)
   dataSchema?: FurnisherDataSchema;  // Field definitions for this furnisher's data
 
   // Metadata

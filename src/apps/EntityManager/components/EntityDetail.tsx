@@ -782,7 +782,16 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                     <span className="block text-xs font-medium text-gray-600 mb-2">Entity Type</span>
                     <select
                       value={editFormData.entityType || ''}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, entityType: e.target.value || undefined }))}
+                      onChange={(e) => {
+                        const newEntityType = e.target.value || undefined;
+                        setEditFormData(prev => ({
+                          ...prev,
+                          entityType: newEntityType,
+                          // Clear data/service provider types when switching entity types
+                          dataProviderTypes: newEntityType === 'data-furnisher' ? prev.dataProviderTypes : [],
+                          serviceProviderTypes: newEntityType === 'service-provider' ? prev.serviceProviderTypes : [],
+                        }));
+                      }}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Select type...</option>
@@ -828,39 +837,79 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                     </div>
                   </div>
 
-                  <div>
-                    <span className="block text-xs font-medium text-gray-600 mb-2">Data Provider Types</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(settings?.dataProviderTypes || []).map((providerType) => {
-                        const isSelected = editFormData.dataProviderTypes?.includes(providerType.id as never);
-                        return (
-                          <div
-                            key={providerType.id}
-                            onClick={() => {
-                              const current = editFormData.dataProviderTypes || [];
-                              if (isSelected) {
-                                setEditFormData(prev => ({ ...prev, dataProviderTypes: current.filter(t => t !== providerType.id) as never[] }));
-                              } else {
-                                setEditFormData(prev => ({ ...prev, dataProviderTypes: [...current, providerType.id] as never[] }));
-                              }
-                            }}
-                            className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors select-none ${
-                              isSelected
-                                ? 'bg-blue-50 border-blue-300 text-blue-800'
-                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                            }`}
-                          >
-                            <span className="text-sm">{providerType.label}</span>
-                            {isSelected && (
-                              <svg className="w-3 h-3 text-blue-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                        );
-                      })}
+                  {/* Data Provider Types - only show for data-furnisher */}
+                  {editFormData.entityType === 'data-furnisher' && (
+                    <div>
+                      <span className="block text-xs font-medium text-gray-600 mb-2">Data Provider Types</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(settings?.dataProviderTypes || []).map((providerType) => {
+                          const isSelected = editFormData.dataProviderTypes?.includes(providerType.id as never);
+                          return (
+                            <div
+                              key={providerType.id}
+                              onClick={() => {
+                                const current = editFormData.dataProviderTypes || [];
+                                if (isSelected) {
+                                  setEditFormData(prev => ({ ...prev, dataProviderTypes: current.filter(t => t !== providerType.id) as never[] }));
+                                } else {
+                                  setEditFormData(prev => ({ ...prev, dataProviderTypes: [...current, providerType.id] as never[] }));
+                                }
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors select-none ${
+                                isSelected
+                                  ? 'bg-blue-50 border-blue-300 text-blue-800'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              <span className="text-sm">{providerType.label}</span>
+                              {isSelected && (
+                                <svg className="w-3 h-3 text-blue-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Service Provider Types - only show for service-provider */}
+                  {editFormData.entityType === 'service-provider' && (
+                    <div>
+                      <span className="block text-xs font-medium text-gray-600 mb-2">Service Provider Types</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(settings?.serviceProviderTypes || []).map((providerType) => {
+                          const isSelected = editFormData.serviceProviderTypes?.includes(providerType.id);
+                          return (
+                            <div
+                              key={providerType.id}
+                              onClick={() => {
+                                const current = editFormData.serviceProviderTypes || [];
+                                if (isSelected) {
+                                  setEditFormData(prev => ({ ...prev, serviceProviderTypes: current.filter(t => t !== providerType.id) }));
+                                } else {
+                                  setEditFormData(prev => ({ ...prev, serviceProviderTypes: [...current, providerType.id] }));
+                                }
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors select-none ${
+                                isSelected
+                                  ? 'bg-orange-50 border-orange-300 text-orange-800'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              <span className="text-sm">{providerType.label}</span>
+                              {isSelected && (
+                                <svg className="w-3 h-3 text-orange-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               }
             >
@@ -893,26 +942,52 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                     <p className="text-sm text-gray-400">No regions specified</p>
                   )}
                 </div>
-                <div>
-                  <label className="text-xs text-gray-500">Data Provider Types</label>
-                  {entity.dataProviderTypes && entity.dataProviderTypes.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {entity.dataProviderTypes.map((providerType) => {
-                        const providerConfig = settings?.dataProviderTypes?.find(t => t.id === providerType);
-                        return (
-                          <span
-                            key={providerType}
-                            className="px-2 py-0.5 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded"
-                          >
-                            {providerConfig?.label || providerType}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-400">No data provider types specified</p>
-                  )}
-                </div>
+                {/* Data Provider Types - only show for data-furnisher */}
+                {entity.entityType === 'data-furnisher' && (
+                  <div>
+                    <label className="text-xs text-gray-500">Data Provider Types</label>
+                    {entity.dataProviderTypes && entity.dataProviderTypes.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {entity.dataProviderTypes.map((providerType) => {
+                          const providerConfig = settings?.dataProviderTypes?.find(t => t.id === providerType);
+                          return (
+                            <span
+                              key={providerType}
+                              className="px-2 py-0.5 text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded"
+                            >
+                              {providerConfig?.label || providerType}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">No data provider types specified</p>
+                    )}
+                  </div>
+                )}
+                {/* Service Provider Types - only show for service-provider */}
+                {entity.entityType === 'service-provider' && (
+                  <div>
+                    <label className="text-xs text-gray-500">Service Provider Types</label>
+                    {entity.serviceProviderTypes && entity.serviceProviderTypes.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {entity.serviceProviderTypes.map((providerType) => {
+                          const providerConfig = settings?.serviceProviderTypes?.find(t => t.id === providerType);
+                          return (
+                            <span
+                              key={providerType}
+                              className="px-2 py-0.5 text-xs bg-orange-50 border border-orange-200 text-orange-800 rounded"
+                            >
+                              {providerConfig?.label || providerType}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-400">No service provider types specified</p>
+                    )}
+                  </div>
+                )}
               </div>
             </EditableSection>
           </div>

@@ -21,10 +21,17 @@ export interface EntityTypeSetting {
   description?: string;
 }
 
+export interface ServiceProviderTypeSetting {
+  id: string;
+  label: string;
+  description?: string;
+}
+
 export interface FurnisherSettings {
   dataProviderTypes: DataProviderTypeSetting[];
   entityStatuses: EntityStatusSetting[];
   entityTypes: EntityTypeSetting[];
+  serviceProviderTypes: ServiceProviderTypeSetting[];
 }
 
 interface FurnisherSettingsState {
@@ -42,6 +49,7 @@ interface FurnisherSettingsState {
   getEntityStatusLabel: (id: string) => string;
   getEntityStatusColor: (id: string) => string;
   getEntityTypeLabel: (id: string) => string;
+  getServiceProviderTypeLabel: (id: string) => string;
 }
 
 export const useFurnisherSettingsStore = create<FurnisherSettingsState>((set, get) => ({
@@ -80,6 +88,7 @@ export const useFurnisherSettingsStore = create<FurnisherSettingsState>((set, ge
           dataProviderTypes: updates.dataProviderTypes ?? currentSettings.dataProviderTypes,
           entityStatuses: updates.entityStatuses ?? currentSettings.entityStatuses,
           entityTypes: updates.entityTypes ?? currentSettings.entityTypes,
+          serviceProviderTypes: updates.serviceProviderTypes ?? currentSettings.serviceProviderTypes,
         }),
       });
       if (!response.ok) {
@@ -140,6 +149,13 @@ export const useFurnisherSettingsStore = create<FurnisherSettingsState>((set, ge
     const settings = get().settings;
     if (!settings) return id;
     const type = settings.entityTypes.find(t => t.id === id);
+    return type?.label || id;
+  },
+
+  getServiceProviderTypeLabel: (id) => {
+    const settings = get().settings;
+    if (!settings) return id;
+    const type = settings.serviceProviderTypes.find(t => t.id === id);
     return type?.label || id;
   },
 }));
