@@ -435,21 +435,21 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
             </div>
           )}
 
-          {/* Selected Entity Card */}
+          {/* Selected Entity Bubble - compact floating card */}
           {selectedEntity && (
-            <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-              <div className="p-4">
-                <div className="flex items-start gap-3">
+            <div className="absolute bottom-4 right-4 bg-white rounded-xl shadow-lg border border-gray-200 z-10 max-w-[280px]">
+              <div className="p-3">
+                <div className="flex items-center gap-2.5">
                   {/* Logo */}
                   {getLogoUrl(selectedEntity) ? (
                     <img
                       src={getLogoUrl(selectedEntity)!}
                       alt=""
-                      className="w-12 h-12 object-contain rounded bg-gray-50 flex-shrink-0"
+                      className="w-9 h-9 object-contain rounded-lg bg-gray-50 flex-shrink-0"
                     />
                   ) : (
                     <div
-                      className="w-12 h-12 rounded flex items-center justify-center text-white text-sm font-semibold flex-shrink-0"
+                      className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
                       style={{ backgroundColor: selectedEntity.primaryColor || '#6b7280' }}
                     >
                       {selectedEntity.name.substring(0, 2).toUpperCase()}
@@ -458,54 +458,34 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="font-semibold text-gray-900">{selectedEntity.name}</h4>
-                        <p className="text-sm text-gray-500 mt-0.5">
-                          Covers {selectedEntityProvinces.size} province{selectedEntityProvinces.size !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setSelectedEntityId(null)}
-                        className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 flex-shrink-0"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
+                    <h4 className="font-medium text-gray-900 text-sm truncate">{selectedEntity.name}</h4>
+                    <p className="text-xs text-gray-500">
+                      {selectedEntityProvinces.size} province{selectedEntityProvinces.size !== 1 ? 's' : ''}
+                    </p>
+                  </div>
 
-                    {/* Data types */}
-                    {selectedEntity.dataProviderTypes && selectedEntity.dataProviderTypes.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {selectedEntity.dataProviderTypes.map(type => (
-                          <span
-                            key={type}
-                            className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded"
-                          >
-                            {getDataTypeLabel(type)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Covered regions */}
-                    <div className="text-xs text-gray-500 mt-2">
-                      {Array.from(selectedEntityProvinces).map(code => getRegionName(code)).join(', ')}
-                    </div>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => onSelectEntity(selectedEntity.id)}
+                      className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="View Details"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setSelectedEntityId(null)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Close"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
-
-                {/* View Details button */}
-                <button
-                  onClick={() => onSelectEntity(selectedEntity.id)}
-                  className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  View Details
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </button>
               </div>
             </div>
           )}
