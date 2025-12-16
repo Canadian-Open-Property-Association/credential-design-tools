@@ -171,50 +171,20 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
         <div className="p-4 border-b border-gray-200">
           <h3 className="font-medium text-gray-900">
             {selectedProvince
-              ? `Furnishers in ${getRegionName(selectedProvince)}`
-              : 'All Furnishers'
+              ? `Entities in ${getRegionName(selectedProvince)}`
+              : 'All Entities'
             }
           </h3>
           <p className="text-sm text-gray-500 mt-0.5">
-            {provinceFurnishers.length} furnisher{provinceFurnishers.length !== 1 ? 's' : ''}
+            {provinceFurnishers.length} entit{provinceFurnishers.length !== 1 ? 'ies' : 'y'}
           </p>
         </div>
 
-        {/* Data Type Filters */}
-        <div className="p-3 border-b border-gray-200">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {dataProviderTypes.map(type => (
-              <button
-                key={type.id}
-                onClick={() => toggleDataType(type.id as DataProviderType)}
-                className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                  selectedDataTypes.includes(type.id as DataProviderType)
-                    ? 'bg-blue-500 text-white border-blue-500'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                }`}
-              >
-                {type.label}
-              </button>
-            ))}
-          </div>
-          {(selectedDataTypes.length > 0 || selectedProvince) && (
-            <button
-              onClick={() => {
-                setSelectedDataTypes([]);
-                setSelectedProvince(null);
-              }}
-              className="mt-2 text-xs text-gray-500 hover:text-gray-700"
-            >
-              Clear all filters
-            </button>
-          )}
-        </div>
-
-        {/* Furnisher List */}
+        {/* Entity List */}
         <div className="flex-1 overflow-y-auto">
           {provinceFurnishers.length === 0 ? (
             <div className="p-4 text-center text-gray-500 text-sm">
-              No furnishers found
+              No entities found
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -273,21 +243,51 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
 
       {/* Right Panel - Map */}
       <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-        {/* Map Header */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <div>
-            <h3 className="font-medium text-gray-900">Coverage Map</h3>
-            <p className="text-sm text-gray-500">Click a province to filter furnishers</p>
-          </div>
-          {/* Legend */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">Coverage:</span>
-            <div className="flex items-center gap-0.5">
-              {COLOR_SCALE.map((color, i) => (
-                <div key={i} className="w-3 h-4 first:rounded-l last:rounded-r" style={{ background: color }} />
-              ))}
+        {/* Map Header with Filters */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-medium text-gray-900">Coverage Map</h3>
+              <p className="text-sm text-gray-500">Click a province to filter entities</p>
             </div>
-            <span className="text-xs text-gray-500">None → High</span>
+            {/* Legend */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500">Coverage:</span>
+              <div className="flex items-center gap-0.5">
+                {COLOR_SCALE.map((color, i) => (
+                  <div key={i} className="w-3 h-4 first:rounded-l last:rounded-r" style={{ background: color }} />
+                ))}
+              </div>
+              <span className="text-xs text-gray-500">None → High</span>
+            </div>
+          </div>
+          {/* Data Type Filters */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-gray-500 mr-1">Filter by type:</span>
+            {dataProviderTypes.map(type => (
+              <button
+                key={type.id}
+                onClick={() => toggleDataType(type.id as DataProviderType)}
+                className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${
+                  selectedDataTypes.includes(type.id as DataProviderType)
+                    ? 'bg-blue-500 text-white border-blue-500'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                }`}
+              >
+                {type.label}
+              </button>
+            ))}
+            {(selectedDataTypes.length > 0 || selectedProvince) && (
+              <button
+                onClick={() => {
+                  setSelectedDataTypes([]);
+                  setSelectedProvince(null);
+                }}
+                className="ml-2 text-xs text-gray-500 hover:text-gray-700 underline"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         </div>
 
@@ -368,7 +368,7 @@ export default function MapView({ entities, onSelectEntity }: MapViewProps) {
                 <div>
                   <div className="font-medium text-gray-900">{getRegionName(selectedProvince)}</div>
                   <div className="text-sm text-gray-500">
-                    {provinceCount[selectedProvince] || 0} furnisher{(provinceCount[selectedProvince] || 0) !== 1 ? 's' : ''}
+                    {provinceCount[selectedProvince] || 0} entit{(provinceCount[selectedProvince] || 0) !== 1 ? 'ies' : 'y'}
                   </div>
                 </div>
                 <button
