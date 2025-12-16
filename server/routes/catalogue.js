@@ -1475,6 +1475,10 @@ const getDefaultFurnisherSettings = () => ({
     { id: 'pending', label: 'Pending', color: 'yellow' },
     { id: 'inactive', label: 'Inactive', color: 'gray' },
   ],
+  entityTypes: [
+    { id: 'data-furnisher', label: 'Data Furnisher', description: 'Organization that provides data' },
+    { id: 'service-provider', label: 'Service Provider', description: 'Organization that provides services' },
+  ],
 });
 
 // Initialize furnisher settings file if it doesn't exist
@@ -1494,6 +1498,7 @@ const loadFurnisherSettings = () => {
   return {
     dataProviderTypes: data.dataProviderTypes || defaults.dataProviderTypes,
     entityStatuses: data.entityStatuses || defaults.entityStatuses,
+    entityTypes: data.entityTypes || defaults.entityTypes,
   };
 };
 
@@ -1520,6 +1525,7 @@ router.put('/furnisher-settings', requireAuth, (req, res) => {
     const updatedSettings = {
       dataProviderTypes: req.body.dataProviderTypes ?? currentSettings.dataProviderTypes,
       entityStatuses: req.body.entityStatuses ?? currentSettings.entityStatuses,
+      entityTypes: req.body.entityTypes ?? currentSettings.entityTypes,
     };
 
     // Validate data provider types
@@ -1536,6 +1542,15 @@ router.put('/furnisher-settings', requireAuth, (req, res) => {
       for (const status of updatedSettings.entityStatuses) {
         if (!status.id || !status.label) {
           return res.status(400).json({ error: 'Each entity status must have an id and label' });
+        }
+      }
+    }
+
+    // Validate entity types
+    if (updatedSettings.entityTypes) {
+      for (const type of updatedSettings.entityTypes) {
+        if (!type.id || !type.label) {
+          return res.status(400).json({ error: 'Each entity type must have an id and label' });
         }
       }
     }

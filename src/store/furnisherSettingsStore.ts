@@ -15,9 +15,16 @@ export interface EntityStatusSetting {
   color: string;
 }
 
+export interface EntityTypeSetting {
+  id: string;
+  label: string;
+  description?: string;
+}
+
 export interface FurnisherSettings {
   dataProviderTypes: DataProviderTypeSetting[];
   entityStatuses: EntityStatusSetting[];
+  entityTypes: EntityTypeSetting[];
 }
 
 interface FurnisherSettingsState {
@@ -34,6 +41,7 @@ interface FurnisherSettingsState {
   getDataProviderTypeLabel: (id: string) => string;
   getEntityStatusLabel: (id: string) => string;
   getEntityStatusColor: (id: string) => string;
+  getEntityTypeLabel: (id: string) => string;
 }
 
 export const useFurnisherSettingsStore = create<FurnisherSettingsState>((set, get) => ({
@@ -71,6 +79,7 @@ export const useFurnisherSettingsStore = create<FurnisherSettingsState>((set, ge
         body: JSON.stringify({
           dataProviderTypes: updates.dataProviderTypes ?? currentSettings.dataProviderTypes,
           entityStatuses: updates.entityStatuses ?? currentSettings.entityStatuses,
+          entityTypes: updates.entityTypes ?? currentSettings.entityTypes,
         }),
       });
       if (!response.ok) {
@@ -125,5 +134,12 @@ export const useFurnisherSettingsStore = create<FurnisherSettingsState>((set, ge
     if (!settings) return 'gray';
     const status = settings.entityStatuses.find(s => s.id === id);
     return status?.color || 'gray';
+  },
+
+  getEntityTypeLabel: (id) => {
+    const settings = get().settings;
+    if (!settings) return id;
+    const type = settings.entityTypes.find(t => t.id === id);
+    return type?.label || id;
   },
 }));

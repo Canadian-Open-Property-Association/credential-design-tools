@@ -761,6 +761,7 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
               onSave={async () => {
                 try {
                   await updateEntity(entity.id, {
+                    entityType: editFormData.entityType,
                     regionsCovered: editFormData.regionsCovered,
                     dataProviderTypes: editFormData.dataProviderTypes
                   });
@@ -776,6 +777,23 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
               }}
               editContent={
                 <div className="space-y-4">
+                  {/* Entity Type */}
+                  <div>
+                    <span className="block text-xs font-medium text-gray-600 mb-2">Entity Type</span>
+                    <select
+                      value={editFormData.entityType || ''}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, entityType: e.target.value || undefined }))}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select type...</option>
+                      {(settings?.entityTypes || []).map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <span className="block text-xs font-medium text-gray-600 mb-2">Regions Covered</span>
                     <div className="grid grid-cols-4 gap-2">
@@ -847,6 +865,17 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
               }
             >
               <div className="space-y-3">
+                {/* Entity Type */}
+                <div>
+                  <label className="text-xs text-gray-500">Entity Type</label>
+                  {entity.entityType ? (
+                    <p className="text-sm text-gray-800">
+                      {settings?.entityTypes?.find(t => t.id === entity.entityType)?.label || entity.entityType}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-400">Not specified</p>
+                  )}
+                </div>
                 <div>
                   <label className="text-xs text-gray-500">Regions Covered</label>
                   {entity.regionsCovered && entity.regionsCovered.length > 0 ? (

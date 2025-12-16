@@ -25,6 +25,7 @@ const defaultFormData: FormData = {
   contactName: '',
   did: '',
   status: 'active',
+  entityType: '',
   regionsCovered: [],
   dataProviderTypes: [],
 };
@@ -71,6 +72,7 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
           contactName: entity.contactName || '',
           did: entity.did || '',
           status: entity.status,
+          entityType: entity.entityType || '',
           regionsCovered: entity.regionsCovered || [],
           dataProviderTypes: entity.dataProviderTypes || [],
         });
@@ -204,23 +206,43 @@ export default function EntityForm({ entityId, onClose, onCreated }: EntityFormP
                 </div>
               </div>
 
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {(settings?.entityStatuses || []).map((status) => (
-                    <option key={status.id} value={status.id}>
-                      {status.label}
-                    </option>
-                  ))}
-                </select>
+              {/* Status and Entity Type Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {(settings?.entityStatuses || []).map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Entity Type
+                  </label>
+                  <select
+                    name="entityType"
+                    value={formData.entityType || ''}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select type...</option>
+                    {(settings?.entityTypes || []).map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Description */}

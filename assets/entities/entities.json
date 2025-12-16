@@ -1,0 +1,75 @@
+{
+  "entities": [
+    {
+      "id": "copa-cornerstone",
+      "name": "Cornerstone Platform Inc.",
+      "types": [
+        "issuer"
+      ],
+      "description": "Platform operator for the COPA credential ecosystem",
+      "logoUri": "entities/logos/cornerstone.png",
+      "primaryColor": "#1a365d",
+      "website": "https://cornerstone.ca",
+      "status": "active",
+      "createdAt": "2025-12-15T19:30:03.774Z",
+      "updatedAt": "2025-12-15T19:30:03.774Z"
+    },
+    {
+      "id": "copa-sutton-group",
+      "name": "Sutton Group",
+      "types": [
+        "network-partner",
+        "issuer"
+      ],
+      "description": "Real estate network partner and credential issuer in the COPA ecosystem",
+      "logoUri": "entities/logos/sutton-group.png",
+      "primaryColor": "#c41e3a",
+      "website": "https://sutton.com",
+      "status": "active",
+      "createdAt": "2025-12-15T19:30:03.774Z",
+      "updatedAt": "2025-12-15T19:30:03.774Z"
+    },
+    {
+      "id": "copa-landcor",
+      "name": "Landcor Data Corporation",
+      "types": [
+        "data-furnisher"
+      ],
+      "description": "Authorized data furnisher for property valuation and real estate market analytics",
+      "logoUri": "entities/logos/landcor.png",
+      "primaryColor": "#2d5a27",
+      "website": "https://landcor.com",
+      "status": "active",
+      "createdAt": "2025-12-15T19:30:03.774Z",
+      "updatedAt": "2025-12-15T19:30:03.774Z"
+    },
+    {
+      "id": "copa-interac",
+      "name": "Interac Corp.",
+      "types": [
+        "data-furnisher"
+      ],
+      "description": "Authorized data furnisher for identity verification services",
+      "logoUri": "entities/logos/interac.png",
+      "primaryColor": "#f9a825",
+      "website": "https://interac.ca",
+      "status": "active",
+      "createdAt": "2025-12-15T19:30:03.774Z",
+      "updatedAt": "2025-12-15T19:30:03.774Z"
+    },
+    {
+      "id": "copa-cove",
+      "name": "Cove Insurance",
+      "types": [
+        "data-furnisher"
+      ],
+      "description": "Authorized data furnisher for insurance data and coverage verification",
+      "logoUri": "entities/logos/cove.png",
+      "primaryColor": "#0077b6",
+      "website": "https://coveinsurance.ca",
+      "status": "active",
+      "createdAt": "2025-12-15T19:30:03.774Z",
+      "updatedAt": "2025-12-15T19:30:03.774Z"
+    }
+  ]
+}

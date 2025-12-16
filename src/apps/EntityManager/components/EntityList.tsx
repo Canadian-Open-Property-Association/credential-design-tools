@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useEntityStore } from '../../../store/entityStore';
+import { useFurnisherSettingsStore } from '../../../store/furnisherSettingsStore';
 import type { Entity, EntityAsset } from '../../../types/entity';
 
 interface EntityListProps {
@@ -11,7 +12,17 @@ const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5174';
 
 export default function EntityList({ onEditEntity, onAddEntity }: EntityListProps) {
   const { entities, selectedEntity, selectEntity, searchQuery, setSearchQuery, deleteEntity } = useEntityStore();
+  const { settings } = useFurnisherSettingsStore();
   const [logoAssets, setLogoAssets] = useState<Record<string, string>>({});
+
+  // Get label for data provider type
+  const getDataTypeLabel = (typeId: string) => {
+    if (settings?.dataProviderTypes) {
+      const found = settings.dataProviderTypes.find(t => t.id === typeId);
+      if (found) return found.label;
+    }
+    return typeId;
+  };
 
   // Fetch entity-logo assets for all entities
   useEffect(() => {
@@ -77,7 +88,7 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
       <div className="px-3 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-gray-500">
-            {filteredEntities.length} {filteredEntities.length === 1 ? 'furnisher' : 'furnishers'}
+            {filteredEntities.length} {filteredEntities.length === 1 ? 'entity' : 'entities'}
             {searchQuery && entities.length !== filteredEntities.length && (
               <span className="text-gray-400"> of {entities.length}</span>
             )}
@@ -85,7 +96,7 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
           <button
             onClick={onAddEntity}
             className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-            title="Add new furnisher"
+            title="Add new entity"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -130,71 +141,89 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto">
-          {/* Entity list */}
-          {filteredEntities.map((entity) => {
-        const logoUrl = getEntityLogo(entity);
-        return (
-          <div
-            key={entity.id}
-            onClick={() => selectEntity(entity.id)}
-            className={`group px-4 py-3 border-b border-gray-100 cursor-pointer transition-colors ${
-              selectedEntity?.id === entity.id
-                ? 'bg-blue-50 border-l-4'
-                : 'hover:bg-gray-50'
-            }`}
-            style={selectedEntity?.id === entity.id ? { borderLeftColor: entity.primaryColor || '#2563eb' } : undefined}
-          >
-            <div className="flex items-start gap-3">
-              {/* Logo or initials */}
-              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                {logoUrl ? (
-                  <img
-                    src={logoUrl}
-                    alt={entity.name}
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-                ) : null}
-                <span className={`text-sm font-semibold text-gray-400 ${logoUrl ? 'hidden' : ''}`}>
-                  {entity.name.substring(0, 2).toUpperCase()}
-                </span>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-gray-900">{entity.name}</h4>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEditEntity(entity.id);
-                  }}
-                  className="p-1 text-gray-400 hover:text-blue-600 rounded"
-                  title="Edit"
+          {/* Entity list - matches MapView styling */}
+          <div className="divide-y divide-gray-100">
+            {filteredEntities.map((entity) => {
+              const logoUrl = getEntityLogo(entity);
+              const isSelected = selectedEntity?.id === entity.id;
+              return (
+                <div
+                  key={entity.id}
+                  onClick={() => selectEntity(entity.id)}
+                  className={`group p-3 cursor-pointer transition-colors border-l-4 ${
+                    isSelected
+                      ? 'bg-blue-50 border-l-blue-500'
+                      : 'hover:bg-gray-50 border-l-transparent'
+                  }`}
+                  style={isSelected && entity.primaryColor ? { borderLeftColor: entity.primaryColor } : undefined}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={(e) => handleDelete(e, entity)}
-                  className="p-1 text-gray-400 hover:text-red-600 rounded"
-                  title="Delete"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+                  <div className="flex items-center gap-3">
+                    {/* Logo or initials */}
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt=""
+                        className="w-8 h-8 object-contain rounded bg-gray-50 flex-shrink-0"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-gray-400 text-xs font-medium flex-shrink-0 ${logoUrl ? 'hidden' : ''}`}>
+                      {entity.name.substring(0, 2).toUpperCase()}
+                    </div>
+
+                    {/* Name and badges */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 text-sm truncate">{entity.name}</div>
+                      {/* Data provider type badges */}
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {entity.dataProviderTypes?.slice(0, 2).map(type => (
+                          <span
+                            key={type}
+                            className="text-xs px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded"
+                          >
+                            {getDataTypeLabel(type)}
+                          </span>
+                        ))}
+                        {(entity.dataProviderTypes?.length || 0) > 2 && (
+                          <span className="text-xs text-gray-400">
+                            +{(entity.dataProviderTypes?.length || 0) - 2}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditEntity(entity.id);
+                        }}
+                        className="p-1 text-gray-400 hover:text-blue-600 rounded"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(e, entity)}
+                        className="p-1 text-gray-400 hover:text-red-600 rounded"
+                        title="Delete"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        );
-          })}
         </div>
       )}
     </div>

@@ -121,7 +121,10 @@ export interface Entity {
   // Technical Identity
   did?: string;                  // Decentralized Identifier
 
-  // Data Furnisher fields (all entities are furnishers)
+  // Classification
+  entityType?: string;           // Entity type (e.g., 'data-furnisher', 'service-provider')
+
+  // Data Furnisher fields
   regionsCovered?: string[];     // Regions/provinces this entity covers
   dataProviderTypes?: DataProviderType[];  // Types of data this furnisher provides
   dataSchema?: FurnisherDataSchema;  // Field definitions for this furnisher's data
