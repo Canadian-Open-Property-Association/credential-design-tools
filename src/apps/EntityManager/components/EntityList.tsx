@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useEntityStore } from '../../../store/entityStore';
 import { useFurnisherSettingsStore } from '../../../store/furnisherSettingsStore';
 import type { Entity, EntityAsset } from '../../../types/entity';
@@ -14,6 +14,9 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
   const { entities, selectedEntity, selectEntity, searchQuery, setSearchQuery, deleteEntity } = useEntityStore();
   const { settings } = useFurnisherSettingsStore();
   const [logoAssets, setLogoAssets] = useState<Record<string, string>>({});
+  const [logoVersion, setLogoVersion] = useState(0);
+  const entityRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
   // Get label for data provider type
   const getDataTypeLabel = (typeId: string) => {
@@ -24,29 +27,55 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
     return typeId;
   };
 
+  // Get label for entity type
+  const getEntityTypeLabel = (typeId: string) => {
+    if (settings?.entityTypes) {
+      const found = settings.entityTypes.find(t => t.id === typeId);
+      if (found) return found.label;
+    }
+    return typeId;
+  };
+
   // Fetch entity-logo assets for all entities
+  const fetchLogoAssets = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/assets?type=entity-logo`, { credentials: 'include' });
+      if (!res.ok) return;
+      const assets: EntityAsset[] = await res.json();
+
+      const logoMap: Record<string, string> = {};
+      assets.forEach((asset) => {
+        // Assets have entityId stored - use it to map to entity
+        if (asset.entityId && asset.type === 'entity-logo') {
+          logoMap[asset.entityId] = asset.localUri;
+        }
+      });
+      setLogoAssets(logoMap);
+    } catch (err) {
+      console.error('Failed to fetch logo assets:', err);
+    }
+  };
+
   useEffect(() => {
-    const fetchLogoAssets = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/assets?type=entity-logo`, { credentials: 'include' });
-        if (!res.ok) return;
-        const assets: EntityAsset[] = await res.json();
-
-        const logoMap: Record<string, string> = {};
-        assets.forEach((asset) => {
-          // Assets have entityId stored - use it to map to entity
-          if (asset.entityId && asset.type === 'entity-logo') {
-            logoMap[asset.entityId] = asset.localUri;
-          }
-        });
-        setLogoAssets(logoMap);
-      } catch (err) {
-        console.error('Failed to fetch logo assets:', err);
-      }
-    };
-
     fetchLogoAssets();
-  }, [entities]);
+  }, [entities, logoVersion]);
+
+  // Listen for logo updates from AssetsSection
+  useEffect(() => {
+    const handleLogoUpdate = () => {
+      setLogoVersion(v => v + 1);
+    };
+    window.addEventListener('entity-logo-updated', handleLogoUpdate);
+    return () => window.removeEventListener('entity-logo-updated', handleLogoUpdate);
+  }, []);
+
+  // Auto-scroll to selected entity when it changes
+  useEffect(() => {
+    if (selectedEntity && entityRefs.current[selectedEntity.id]) {
+      const element = entityRefs.current[selectedEntity.id];
+      element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedEntity?.id]);
 
   // Get logo URL for an entity - prefer local asset, fall back to entity.logoUri
   const getEntityLogo = (entity: Entity): string | undefined => {
@@ -140,7 +169,7 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" ref={listContainerRef}>
           {/* Entity list - matches MapView styling */}
           <div className="divide-y divide-gray-100">
             {filteredEntities.map((entity) => {
@@ -149,6 +178,7 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
               return (
                 <div
                   key={entity.id}
+                  ref={(el) => { entityRefs.current[entity.id] = el; }}
                   onClick={() => selectEntity(entity.id)}
                   className={`group p-3 cursor-pointer transition-colors border-l-4 ${
                     isSelected
@@ -177,8 +207,13 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
                     {/* Name and badges */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-900 text-sm truncate">{entity.name}</div>
-                      {/* Data provider type badges */}
+                      {/* Entity type and data provider type badges */}
                       <div className="flex flex-wrap gap-1 mt-0.5">
+                        {entity.entityType && (
+                          <span className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded">
+                            {getEntityTypeLabel(entity.entityType)}
+                          </span>
+                        )}
                         {entity.dataProviderTypes?.slice(0, 2).map(type => (
                           <span
                             key={type}

@@ -18,11 +18,6 @@ const STATUS_COLORS = [
 ];
 
 const CATEGORIES = [
-  { id: 'data-types' as const, label: 'Data Provider Types', icon: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-    </svg>
-  )},
   { id: 'entity-types' as const, label: 'Entity Types', icon: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -33,11 +28,16 @@ const CATEGORIES = [
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   )},
+  { id: 'data-types' as const, label: 'Data Provider Types', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+    </svg>
+  )},
 ];
 
 export default function SettingsModal({ onClose }: SettingsModalProps) {
   const { settings, fetchSettings, updateSettings, isLoading } = useFurnisherSettingsStore();
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('data-types');
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('entity-types');
   const [dataProviderTypes, setDataProviderTypes] = useState<DataProviderTypeSetting[]>([]);
   const [entityStatuses, setEntityStatuses] = useState<EntityStatusSetting[]>([]);
   const [entityTypes, setEntityTypes] = useState<EntityTypeSetting[]>([]);

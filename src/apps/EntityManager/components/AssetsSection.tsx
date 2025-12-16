@@ -180,6 +180,8 @@ export default function AssetsSection({ entity, onRefreshEntity }: AssetsSection
 
       await fetchAssets();
       onRefreshEntity();
+      // Dispatch event to notify EntityList to refresh logos
+      window.dispatchEvent(new CustomEvent('entity-logo-updated'));
       setSuccessMessage('Logo updated');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
