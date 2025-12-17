@@ -121,8 +121,8 @@ export interface Entity {
   // Technical Identity
   did?: string;                  // Decentralized Identifier
 
-  // Classification
-  entityType?: string;           // Entity type (e.g., 'data-furnisher', 'service-provider')
+  // Classification - supports multiple entity types
+  entityTypes: string[];         // Array of entity type IDs (e.g., ['data-furnisher', 'portfolio-issuer'])
 
   // Data Furnisher fields
   regionsCovered?: string[];     // Regions/provinces this entity covers

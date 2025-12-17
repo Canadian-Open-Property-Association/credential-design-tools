@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useEntityStore } from '../../../store/entityStore';
+import { useFurnisherSettingsStore } from '../../../store/furnisherSettingsStore';
 
 interface SaveToRepoModalProps {
   selectedEntityId?: string;
@@ -21,22 +22,31 @@ interface EntityDiff {
   };
 }
 
-type ModalStep = 'choose' | 'diff' | 'form' | 'success';
+interface EntityStatementStatus {
+  exists: boolean;
+  sha?: string;
+  uri?: string;
+}
+
+type ModalStep = 'choose' | 'diff' | 'form' | 'success' | 'entity-preview';
 type SaveMode = 'current' | 'all';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5174';
 
 export default function SaveToRepoModal({ selectedEntityId, onClose }: SaveToRepoModalProps) {
   const { entities, saveToGitHub } = useEntityStore();
+  const { getEntityTypeLabel, getDataProviderTypeLabel } = useFurnisherSettingsStore();
   const [step, setStep] = useState<ModalStep>(selectedEntityId ? 'choose' : 'diff');
   const [saveMode, setSaveMode] = useState<SaveMode>('all');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingDiff, setIsLoadingDiff] = useState(false);
+  const [isCheckingStatement, setIsCheckingStatement] = useState(false);
   const [diff, setDiff] = useState<EntityDiff | null>(null);
   const [diffError, setDiffError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ success: boolean; prUrl?: string; error?: string } | null>(null);
+  const [entityStatementStatus, setEntityStatementStatus] = useState<EntityStatementStatus | null>(null);
+  const [result, setResult] = useState<{ success: boolean; prUrl?: string; error?: string; isUpdate?: boolean } | null>(null);
 
   const selectedEntity = entities.find(e => e.id === selectedEntityId);
 
@@ -46,6 +56,74 @@ export default function SaveToRepoModal({ selectedEntityId, onClose }: SaveToRep
       fetchDiff();
     }
   }, [step]);
+
+  // Check entity statement status when entering entity-preview step
+  useEffect(() => {
+    if (step === 'entity-preview' && selectedEntityId) {
+      checkEntityStatementStatus();
+    }
+  }, [step, selectedEntityId]);
+
+  const checkEntityStatementStatus = async () => {
+    if (!selectedEntityId) return;
+    setIsCheckingStatement(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/github/entity-statement/${selectedEntityId}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        throw new Error('Failed to check entity statement status');
+      }
+      const data = await res.json();
+      setEntityStatementStatus(data);
+    } catch (err) {
+      console.error('Failed to check entity statement:', err);
+      setEntityStatementStatus({ exists: false });
+    } finally {
+      setIsCheckingStatement(false);
+    }
+  };
+
+  const publishEntityStatement = async () => {
+    if (!selectedEntity || !selectedEntityId) return;
+
+    setIsSubmitting(true);
+    setResult(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/github/entity-statement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          entityId: selectedEntityId,
+          entity: selectedEntity,
+          title: title || undefined,
+          description: description || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to publish entity statement');
+      }
+
+      const data = await res.json();
+      setResult({
+        success: true,
+        prUrl: data.pr.url,
+        isUpdate: data.isUpdate,
+      });
+      setStep('success');
+    } catch (err) {
+      setResult({
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to publish entity statement',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const fetchDiff = async () => {
     setIsLoadingDiff(true);
@@ -73,8 +151,8 @@ export default function SaveToRepoModal({ selectedEntityId, onClose }: SaveToRep
   const handleModeSelect = (mode: SaveMode) => {
     setSaveMode(mode);
     if (mode === 'current') {
-      setTitle(`Update entity: ${selectedEntity?.name || selectedEntityId}`);
-      setStep('form');
+      setTitle(`Publish entity: ${selectedEntity?.name || selectedEntityId}`);
+      setStep('entity-preview');
     } else {
       setStep('diff');
     }
@@ -134,6 +212,7 @@ export default function SaveToRepoModal({ selectedEntityId, onClose }: SaveToRep
               <p className="text-sm text-gray-500">
                 {step === 'choose' && 'Choose what to save'}
                 {step === 'diff' && 'Review changes'}
+                {step === 'entity-preview' && 'Review entity statement'}
                 {step === 'form' && 'Configure PR details'}
                 {step === 'success' && 'PR created successfully'}
               </p>
@@ -313,6 +392,160 @@ export default function SaveToRepoModal({ selectedEntityId, onClose }: SaveToRep
             </div>
           )}
 
+          {/* Step: Entity Preview */}
+          {step === 'entity-preview' && selectedEntity && (
+            <div className="space-y-4">
+              {isCheckingStatement ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Checking publication status...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Status banner */}
+                  {entityStatementStatus?.exists ? (
+                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <p className="text-sm text-yellow-700">
+                          This entity already has a published statement. Creating a PR will update it.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm text-blue-700">
+                          This will create a new entity statement file at <code className="text-xs bg-blue-100 px-1 py-0.5 rounded">{selectedEntity.id}.json</code>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Entity preview */}
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                      <h4 className="font-medium text-gray-900">Entity Statement Preview</h4>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      {/* Name and ID */}
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-lg text-gray-900">{selectedEntity.name}</p>
+                          <p className="text-xs text-gray-500 font-mono">{selectedEntity.id}</p>
+                        </div>
+                        {selectedEntity.logoUri && (
+                          <img
+                            src={selectedEntity.logoUri}
+                            alt=""
+                            className="w-12 h-12 object-contain rounded bg-gray-50"
+                          />
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      {selectedEntity.description && (
+                        <p className="text-sm text-gray-600">{selectedEntity.description}</p>
+                      )}
+
+                      {/* Entity Types */}
+                      {selectedEntity.entityTypes && selectedEntity.entityTypes.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Entity Types</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedEntity.entityTypes.map(typeId => (
+                              <span key={typeId} className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                {getEntityTypeLabel(typeId)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Data Provider Types */}
+                      {selectedEntity.dataProviderTypes && selectedEntity.dataProviderTypes.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Data Provider Types</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedEntity.dataProviderTypes.map(typeId => (
+                              <span key={typeId} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                {getDataProviderTypeLabel(typeId)}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Regions */}
+                      {selectedEntity.regionsCovered && selectedEntity.regionsCovered.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Regions Covered</p>
+                          <p className="text-sm text-gray-700">{selectedEntity.regionsCovered.join(', ')}</p>
+                        </div>
+                      )}
+
+                      {/* Contact info */}
+                      {(selectedEntity.website || selectedEntity.contactEmail) && (
+                        <div className="pt-2 border-t border-gray-100">
+                          {selectedEntity.website && (
+                            <p className="text-xs text-gray-500">
+                              <span className="font-medium">Website:</span> {selectedEntity.website}
+                            </p>
+                          )}
+                          {selectedEntity.contactEmail && (
+                            <p className="text-xs text-gray-500">
+                              <span className="font-medium">Email:</span> {selectedEntity.contactEmail}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* PR details inline */}
+                  <div className="space-y-3 pt-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        PR Title (optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        placeholder={entityStatementStatus?.exists ? `Update entity: ${selectedEntity.name}` : `Add entity: ${selectedEntity.name}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Description (optional)
+                      </label>
+                      <textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y text-sm"
+                        placeholder="Additional details about this entity..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Error display */}
+                  {result?.error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                      {result.error}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
           {/* Step: Form */}
           {step === 'form' && (
             <form onSubmit={handleSubmit}>
@@ -401,6 +634,7 @@ export default function SaveToRepoModal({ selectedEntityId, onClose }: SaveToRep
                   type="button"
                   onClick={() => {
                     if (step === 'diff' && selectedEntityId) setStep('choose');
+                    else if (step === 'entity-preview') setStep('choose');
                     else if (step === 'form') setStep(saveMode === 'current' ? 'choose' : 'diff');
                   }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
@@ -424,6 +658,31 @@ export default function SaveToRepoModal({ selectedEntityId, onClose }: SaveToRep
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
                 >
                   Continue
+                </button>
+              )}
+              {step === 'entity-preview' && !isCheckingStatement && (
+                <button
+                  type="button"
+                  onClick={publishEntityStatement}
+                  disabled={isSubmitting}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Creating PR...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      {entityStatementStatus?.exists ? 'Update Entity Statement' : 'Publish Entity Statement'}
+                    </>
+                  )}
                 </button>
               )}
               {step === 'form' && (

@@ -162,6 +162,20 @@ export interface VCTCardElements {
 // Content type for zone elements
 export type ZoneContentType = 'text' | 'image';
 
+// Entity role for asset criteria (which entity provides the asset)
+export type AssetEntityRole = 'issuer' | 'furnisher' | 'verifier';
+
+// Asset type options
+export type AssetTypeOption = 'entity-logo' | 'credential-background' | 'credential-icon';
+
+// Criteria for rule-based asset selection (instead of hardcoded URLs)
+// When using criteria, the actual asset is resolved at render/issuance time
+export interface AssetCriteria {
+  entityRole: AssetEntityRole;           // Which entity provides the asset
+  dataProviderType?: string;             // Required if entityRole is 'furnisher' - e.g., 'identity', 'title-ownership'
+  assetType: AssetTypeOption;            // Type of asset to select
+}
+
 // Horizontal alignment options for zone content
 export type ZoneAlignment = 'left' | 'center' | 'right';
 
@@ -174,7 +188,11 @@ export interface DynamicCardElement {
   content_type: ZoneContentType; // text or image
   claim_path?: string; // JSONPath for dynamic data
   static_value?: string; // Static text/value
-  logo_uri?: string; // Image URL for image content
+
+  // Image content options (use logo_uri OR asset_criteria, not both)
+  logo_uri?: string; // Direct image URL (legacy, specific asset)
+  asset_criteria?: AssetCriteria; // Rule-based asset selection (new, dynamic resolution)
+
   label?: string; // Optional display label
   alignment?: ZoneAlignment; // Horizontal alignment within zone (default: center)
   verticalAlignment?: ZoneVerticalAlignment; // Vertical alignment within zone (default: middle)

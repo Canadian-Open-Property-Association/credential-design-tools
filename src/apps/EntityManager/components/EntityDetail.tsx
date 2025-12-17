@@ -761,9 +761,10 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
               onSave={async () => {
                 try {
                   await updateEntity(entity.id, {
-                    entityType: editFormData.entityType,
+                    entityTypes: editFormData.entityTypes,
                     regionsCovered: editFormData.regionsCovered,
-                    dataProviderTypes: editFormData.dataProviderTypes
+                    dataProviderTypes: editFormData.dataProviderTypes,
+                    serviceProviderTypes: editFormData.serviceProviderTypes
                   });
                   setEditingSection(null);
                   setEditFormData({});
@@ -777,30 +778,50 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
               }}
               editContent={
                 <div className="space-y-4">
-                  {/* Entity Type */}
+                  {/* Entity Types - Multi-select */}
                   <div>
-                    <span className="block text-xs font-medium text-gray-600 mb-2">Entity Type</span>
-                    <select
-                      value={editFormData.entityType || ''}
-                      onChange={(e) => {
-                        const newEntityType = e.target.value || undefined;
-                        setEditFormData(prev => ({
-                          ...prev,
-                          entityType: newEntityType,
-                          // Clear data/service provider types when switching entity types
-                          dataProviderTypes: newEntityType === 'data-furnisher' ? prev.dataProviderTypes : [],
-                          serviceProviderTypes: newEntityType === 'service-provider' ? prev.serviceProviderTypes : [],
-                        }));
-                      }}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Select type...</option>
-                      {(settings?.entityTypes || []).map((type) => (
-                        <option key={type.id} value={type.id}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
+                    <span className="block text-xs font-medium text-gray-600 mb-2">Entity Types</span>
+                    <p className="text-xs text-gray-500 mb-2">Select all that apply</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(settings?.entityTypes || []).map((type) => {
+                        const isSelected = editFormData.entityTypes?.includes(type.id);
+                        return (
+                          <div
+                            key={type.id}
+                            onClick={() => {
+                              const current = editFormData.entityTypes || [];
+                              let newTypes: string[];
+                              if (isSelected) {
+                                newTypes = current.filter(t => t !== type.id);
+                              } else {
+                                newTypes = [...current, type.id];
+                              }
+                              // Clear provider types that are no longer relevant
+                              const hasDataFurnisher = newTypes.includes('data-furnisher');
+                              const hasServiceProvider = newTypes.includes('service-provider');
+                              setEditFormData(prev => ({
+                                ...prev,
+                                entityTypes: newTypes,
+                                dataProviderTypes: hasDataFurnisher ? prev.dataProviderTypes : [],
+                                serviceProviderTypes: hasServiceProvider ? prev.serviceProviderTypes : [],
+                              }));
+                            }}
+                            className={`flex items-center gap-2 px-3 py-2 rounded border cursor-pointer transition-colors select-none ${
+                              isSelected
+                                ? 'bg-purple-50 border-purple-300 text-purple-800'
+                                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                            }`}
+                          >
+                            <span className="text-sm">{type.label}</span>
+                            {isSelected && (
+                              <svg className="w-3 h-3 text-purple-600 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div>
@@ -837,8 +858,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                     </div>
                   </div>
 
-                  {/* Data Provider Types - only show for data-furnisher */}
-                  {editFormData.entityType === 'data-furnisher' && (
+                  {/* Data Provider Types - show if entity has data-furnisher type */}
+                  {editFormData.entityTypes?.includes('data-furnisher') && (
                     <div>
                       <span className="block text-xs font-medium text-gray-600 mb-2">Data Provider Types</span>
                       <div className="grid grid-cols-2 gap-2">
@@ -874,8 +895,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                     </div>
                   )}
 
-                  {/* Service Provider Types - only show for service-provider */}
-                  {editFormData.entityType === 'service-provider' && (
+                  {/* Service Provider Types - show if entity has service-provider type */}
+                  {editFormData.entityTypes?.includes('service-provider') && (
                     <div>
                       <span className="block text-xs font-medium text-gray-600 mb-2">Service Provider Types</span>
                       <div className="grid grid-cols-2 gap-2">
@@ -914,13 +935,23 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
               }
             >
               <div className="space-y-3">
-                {/* Entity Type */}
+                {/* Entity Types */}
                 <div>
-                  <label className="text-xs text-gray-500">Entity Type</label>
-                  {entity.entityType ? (
-                    <p className="text-sm text-gray-800">
-                      {settings?.entityTypes?.find(t => t.id === entity.entityType)?.label || entity.entityType}
-                    </p>
+                  <label className="text-xs text-gray-500">Entity Types</label>
+                  {entity.entityTypes && entity.entityTypes.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {entity.entityTypes.map((typeId) => {
+                        const typeConfig = settings?.entityTypes?.find(t => t.id === typeId);
+                        return (
+                          <span
+                            key={typeId}
+                            className="px-2 py-0.5 text-xs bg-purple-50 border border-purple-200 text-purple-800 rounded"
+                          >
+                            {typeConfig?.label || typeId}
+                          </span>
+                        );
+                      })}
+                    </div>
                   ) : (
                     <p className="text-sm text-gray-400">Not specified</p>
                   )}
@@ -942,8 +973,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                     <p className="text-sm text-gray-400">No regions specified</p>
                   )}
                 </div>
-                {/* Data Provider Types - only show for data-furnisher */}
-                {entity.entityType === 'data-furnisher' && (
+                {/* Data Provider Types - show if entity has data-furnisher type */}
+                {entity.entityTypes?.includes('data-furnisher') && (
                   <div>
                     <label className="text-xs text-gray-500">Data Provider Types</label>
                     {entity.dataProviderTypes && entity.dataProviderTypes.length > 0 ? (
@@ -965,8 +996,8 @@ export default function EntityDetail({ entity, onEdit: _onEdit }: EntityDetailPr
                     )}
                   </div>
                 )}
-                {/* Service Provider Types - only show for service-provider */}
-                {entity.entityType === 'service-provider' && (
+                {/* Service Provider Types - show if entity has service-provider type */}
+                {entity.entityTypes?.includes('service-provider') && (
                   <div>
                     <label className="text-xs text-gray-500">Service Provider Types</label>
                     {entity.serviceProviderTypes && entity.serviceProviderTypes.length > 0 ? (

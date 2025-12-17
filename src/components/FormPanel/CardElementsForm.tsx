@@ -2,15 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import { useVctStore } from '../../store/vctStore';
 import { useZoneTemplateStore } from '../../store/zoneTemplateStore';
 import { useZoneSelectionStore } from '../../store/zoneSelectionStore';
+import { useFurnisherSettingsStore } from '../../store/furnisherSettingsStore';
 import {
   ZoneTemplate,
   Zone,
   ZoneContentType,
   getZoneColor,
+  AssetCriteria,
+  AssetEntityRole,
+  AssetTypeOption,
 } from '../../types/vct';
 import AssetLibrary from '../AssetLibrary/AssetLibrary';
 import ZoneTemplateSelector from '../ZoneEditor/ZoneTemplateSelector';
 import ZoneTemplateLibrary from '../Library/ZoneTemplateLibrary';
+import { getAssetCriteriaLabel } from '../../services/assetResolver';
 
 interface CardElementsFormProps {
   displayIndex: number;
@@ -28,6 +33,7 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
   const currentVct = useVctStore((state) => state.currentVct);
   const display = currentVct.display[displayIndex];
   const dynamicElements = display?.dynamic_card_elements;
+  const { settings } = useFurnisherSettingsStore();
 
   // Zone selection state
   const selectedZoneId = useZoneSelectionStore((state) => state.selectedZoneId);
@@ -81,8 +87,8 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
   const handleElementChange = (
     face: 'front' | 'back',
     zoneId: string,
-    field: 'claim_path' | 'static_value' | 'logo_uri' | 'label' | 'content_type' | 'alignment' | 'verticalAlignment' | 'scale' | 'textWrap',
-    value: string | number | boolean | undefined
+    field: 'claim_path' | 'static_value' | 'logo_uri' | 'label' | 'content_type' | 'alignment' | 'verticalAlignment' | 'scale' | 'textWrap' | 'asset_criteria',
+    value: string | number | boolean | AssetCriteria | undefined
   ) => {
     if (updateDynamicElement) {
       updateDynamicElement(displayIndex, face, zoneId, { [field]: value });
@@ -96,6 +102,7 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
         updateDynamicElement(displayIndex, face, zoneId, {
           content_type: contentType,
           logo_uri: undefined,
+          asset_criteria: undefined,
         });
       } else {
         updateDynamicElement(displayIndex, face, zoneId, {
@@ -241,43 +248,171 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
         )}
 
         {contentType === 'image' && (
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Image</label>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                value={element?.logo_uri || ''}
-                onChange={(e) => handleElementChange(face, zone.id, 'logo_uri', e.target.value || undefined)}
-                placeholder="https://example.com/image.png"
-                className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
-              />
-              <button
-                type="button"
-                onClick={() => openAssetPicker(face, zone.id)}
-                className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
-                title="Browse Asset Library"
-              >
-                Browse
-              </button>
-            </div>
-            {element?.logo_uri && (
-              <div className="mt-2 flex items-center gap-2">
-                <img
-                  src={element.logo_uri}
-                  alt="Preview"
-                  className="w-10 h-10 object-contain border rounded bg-gray-50"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-                <span className="text-xs text-gray-500 truncate flex-1">{element.logo_uri}</span>
+          <div className="space-y-3">
+            {/* Image Source Type Toggle */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Image Source</label>
+              <div className="flex rounded-md shadow-sm">
                 <button
                   type="button"
-                  onClick={() => handleElementChange(face, zone.id, 'logo_uri', undefined)}
-                  className="text-xs text-red-500 hover:text-red-700"
+                  onClick={() => {
+                    // Switch to specific asset mode - clear criteria
+                    handleElementChange(face, zone.id, 'asset_criteria', undefined);
+                  }}
+                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-l-md border ${
+                    !element?.asset_criteria
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
                 >
-                  Remove
+                  Specific Asset
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Switch to criteria mode - clear logo_uri and set default criteria
+                    handleElementChange(face, zone.id, 'logo_uri', undefined);
+                    handleElementChange(face, zone.id, 'asset_criteria', {
+                      entityRole: 'furnisher',
+                      assetType: 'entity-logo',
+                    });
+                  }}
+                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-r-md border-t border-r border-b -ml-px ${
+                    element?.asset_criteria
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Dynamic Criteria
+                </button>
+              </div>
+            </div>
+
+            {/* Specific Asset Selection */}
+            {!element?.asset_criteria && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Select Asset</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={element?.logo_uri || ''}
+                    onChange={(e) => handleElementChange(face, zone.id, 'logo_uri', e.target.value || undefined)}
+                    placeholder="https://example.com/image.png"
+                    className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openAssetPicker(face, zone.id)}
+                    className="px-3 py-1.5 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                    title="Browse Asset Library"
+                  >
+                    Browse
+                  </button>
+                </div>
+                {element?.logo_uri && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <img
+                      src={element.logo_uri}
+                      alt="Preview"
+                      className="w-10 h-10 object-contain border rounded bg-gray-50"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <span className="text-xs text-gray-500 truncate flex-1">{element.logo_uri}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleElementChange(face, zone.id, 'logo_uri', undefined)}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dynamic Criteria Selection */}
+            {element?.asset_criteria && (
+              <div className="space-y-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <p className="text-xs text-purple-700 font-medium">
+                  Asset will be dynamically selected based on criteria:
+                </p>
+
+                {/* Entity Role */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Entity Role</label>
+                  <select
+                    value={element.asset_criteria.entityRole}
+                    onChange={(e) => {
+                      const newRole = e.target.value as AssetEntityRole;
+                      handleElementChange(face, zone.id, 'asset_criteria', {
+                        ...element.asset_criteria!,
+                        entityRole: newRole,
+                        // Clear data provider type if not furnisher
+                        dataProviderType: newRole === 'furnisher' ? element.asset_criteria?.dataProviderType : undefined,
+                      });
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white"
+                  >
+                    <option value="issuer">Issuer</option>
+                    <option value="furnisher">Furnisher (Data Provider)</option>
+                    <option value="verifier">Verifier</option>
+                  </select>
+                </div>
+
+                {/* Data Provider Type - only for furnisher */}
+                {element.asset_criteria.entityRole === 'furnisher' && (
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Data Provider Type</label>
+                    <select
+                      value={element.asset_criteria.dataProviderType || ''}
+                      onChange={(e) => {
+                        handleElementChange(face, zone.id, 'asset_criteria', {
+                          ...element.asset_criteria!,
+                          dataProviderType: e.target.value || undefined,
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white"
+                    >
+                      <option value="">Any data provider</option>
+                      {(settings?.dataProviderTypes || []).map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      e.g., "Identity" will show logos from identity data providers
+                    </p>
+                  </div>
+                )}
+
+                {/* Asset Type */}
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Asset Type</label>
+                  <select
+                    value={element.asset_criteria.assetType}
+                    onChange={(e) => {
+                      handleElementChange(face, zone.id, 'asset_criteria', {
+                        ...element.asset_criteria!,
+                        assetType: e.target.value as AssetTypeOption,
+                      });
+                    }}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white"
+                  >
+                    <option value="entity-logo">Logo</option>
+                    <option value="credential-background">Credential Background</option>
+                    <option value="credential-icon">Credential Icon</option>
+                  </select>
+                </div>
+
+                {/* Criteria Summary */}
+                <div className="mt-2 pt-2 border-t border-purple-200">
+                  <span className="text-xs text-purple-600 font-medium">
+                    Rule: {getAssetCriteriaLabel(element.asset_criteria)}
+                  </span>
+                </div>
               </div>
             )}
           </div>

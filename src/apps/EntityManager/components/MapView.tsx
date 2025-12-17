@@ -256,9 +256,11 @@ export default function MapView({ entities, onSelectEntity, onAddEntity, onEditE
       );
     }
 
-    // Filter by entity type
+    // Filter by entity types (entity matches if ANY of its types are in the selected list)
     if (selectedEntityTypes.length > 0) {
-      result = result.filter(e => e.entityType && selectedEntityTypes.includes(e.entityType));
+      result = result.filter(e =>
+        e.entityTypes?.some(t => selectedEntityTypes.includes(t))
+      );
     }
 
     // Filter by data provider types
@@ -445,9 +447,14 @@ export default function MapView({ entities, onSelectEntity, onAddEntity, onEditE
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-gray-900 text-sm truncate">{entity.name}</div>
                         <div className="flex flex-wrap gap-1 mt-0.5">
-                          {entity.entityType && (
-                            <span className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded">
-                              {settings?.entityTypes?.find(t => t.id === entity.entityType)?.label || entity.entityType}
+                          {entity.entityTypes?.slice(0, 2).map(typeId => (
+                            <span key={typeId} className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded">
+                              {settings?.entityTypes?.find(t => t.id === typeId)?.label || typeId}
+                            </span>
+                          ))}
+                          {(entity.entityTypes?.length || 0) > 2 && (
+                            <span className="text-xs text-gray-400">
+                              +{(entity.entityTypes?.length || 0) - 2} types
                             </span>
                           )}
                           {entity.dataProviderTypes?.slice(0, 2).map(type => (

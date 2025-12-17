@@ -50,11 +50,43 @@ const initializeData = () => {
   }
 };
 
+// Migrate entity from old format to new entityTypes array format
+const migrateEntityTypes = (entity) => {
+  // If already has entityTypes array, return as-is
+  if (Array.isArray(entity.entityTypes)) {
+    return entity;
+  }
+
+  // Migrate from old formats
+  let entityTypes = [];
+
+  // Check for old 'types' array (from previous migration attempt)
+  if (Array.isArray(entity.types) && entity.types.length > 0) {
+    entityTypes = entity.types;
+  }
+  // Check for old 'entityType' single string
+  else if (entity.entityType && typeof entity.entityType === 'string') {
+    entityTypes = [entity.entityType];
+  }
+  // Check for very old 'type' single string
+  else if (entity.type && typeof entity.type === 'string') {
+    entityTypes = [entity.type];
+  }
+
+  // Return migrated entity (without old fields)
+  const { types, type, entityType, ...rest } = entity;
+  return {
+    ...rest,
+    entityTypes,
+  };
+};
+
 // Load helpers
 const loadEntities = () => {
   initializeData();
   const data = JSON.parse(fs.readFileSync(getEntitiesFile(), 'utf-8'));
-  return data.entities || [];
+  // Migrate all entities to new format on load
+  return (data.entities || []).map(migrateEntityTypes);
 };
 
 const saveEntities = (entities) => {
@@ -84,8 +116,8 @@ router.get('/', (req, res) => {
     if (types) {
       const typeList = types.split(',').map((t) => t.trim());
       entities = entities.filter((e) => {
-        // Support both old 'type' field and new 'types' array
-        const entityTypes = e.types || (e.type ? [e.type] : []);
+        // Use migrated entityTypes array
+        const entityTypes = e.entityTypes || [];
         return entityTypes.some((t) => typeList.includes(t));
       });
     }
@@ -148,6 +180,14 @@ router.post('/', requireAuth, (req, res) => {
       return slug ? `copa-${slug}` : '';
     };
 
+    // Handle entityTypes - accept array, or migrate from legacy entityType string
+    let entityTypes = [];
+    if (Array.isArray(req.body.entityTypes)) {
+      entityTypes = req.body.entityTypes;
+    } else if (req.body.entityType && typeof req.body.entityType === 'string') {
+      entityTypes = [req.body.entityType];
+    }
+
     const newEntity = {
       id: req.body.id || generateId(req.body.name),
       name: req.body.name,
@@ -162,7 +202,7 @@ router.post('/', requireAuth, (req, res) => {
       regionsCovered: req.body.regionsCovered || [],
       dataProviderTypes: req.body.dataProviderTypes || [],
       serviceProviderTypes: req.body.serviceProviderTypes || [],
-      entityType: req.body.entityType || '',
+      entityTypes: entityTypes,
       dataSchema: req.body.dataSchema || undefined,
       status: req.body.status || 'active',
       createdAt: now,
@@ -204,9 +244,15 @@ router.put('/:id', requireAuth, (req, res) => {
       return res.status(404).json({ error: 'Entity not found' });
     }
 
-    // Support both 'types' array and legacy 'type' field for existing data
-    const existingTypes = entities[index].types || (entities[index].type ? [entities[index].type] : []);
-    const newTypes = req.body.types ?? (req.body.type ? [req.body.type] : existingTypes);
+    // Handle entityTypes - support new array format and legacy formats
+    let newEntityTypes;
+    if (Array.isArray(req.body.entityTypes)) {
+      newEntityTypes = req.body.entityTypes;
+    } else if (req.body.entityType && typeof req.body.entityType === 'string') {
+      newEntityTypes = [req.body.entityType];
+    } else {
+      newEntityTypes = entities[index].entityTypes || [];
+    }
 
     // Handle ID change if requested (newId is the slug part, without copa- prefix)
     let newEntityId = entities[index].id;
@@ -232,7 +278,7 @@ router.put('/:id', requireAuth, (req, res) => {
       ...entities[index],
       id: newEntityId,
       name: req.body.name ?? entities[index].name,
-      types: newTypes,
+      entityTypes: newEntityTypes,
       description: req.body.description ?? entities[index].description,
       logoUri: req.body.logoUri ?? entities[index].logoUri,
       primaryColor: req.body.primaryColor ?? entities[index].primaryColor,
@@ -244,7 +290,6 @@ router.put('/:id', requireAuth, (req, res) => {
       regionsCovered: req.body.regionsCovered ?? entities[index].regionsCovered,
       dataProviderTypes: req.body.dataProviderTypes ?? entities[index].dataProviderTypes,
       serviceProviderTypes: req.body.serviceProviderTypes ?? entities[index].serviceProviderTypes,
-      entityType: req.body.entityType ?? entities[index].entityType,
       status: req.body.status ?? entities[index].status,
       dataSchema: req.body.dataSchema ?? entities[index].dataSchema,
       updatedAt: new Date().toISOString(),
@@ -255,8 +300,10 @@ router.put('/:id', requireAuth, (req, res) => {
       },
     };
 
-    // Remove legacy 'type' field if it exists
+    // Remove legacy fields if they exist
     delete updatedEntity.type;
+    delete updatedEntity.types;
+    delete updatedEntity.entityType;
 
     entities[index] = updatedEntity;
     saveEntities(entities);

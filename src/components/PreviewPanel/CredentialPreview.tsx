@@ -8,7 +8,10 @@ import {
   VCTSvgTemplate,
   getZoneColor,
   Zone,
+  DynamicCardElement,
+  AssetCriteria,
 } from '../../types/vct';
+import { resolveAssetCriteria } from '../../services/assetResolver';
 
 interface CredentialPreviewProps {
   locale: string;
@@ -153,6 +156,58 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
   const getTemplate = useZoneTemplateStore((state) => state.getTemplate);
   const selectedTemplate = selectedTemplateId ? getTemplate(selectedTemplateId) : null;
 
+  // Resolved asset URLs cache (for criteria-based assets)
+  const [resolvedAssets, setResolvedAssets] = useState<Record<string, string | null>>({});
+
+  // Resolve all criteria-based assets when VCT changes
+  const display = currentVct.display.find((d) => d.locale === locale) || currentVct.display[0];
+  useEffect(() => {
+    const resolveCriteriaAssets = async () => {
+      if (!display?.dynamic_card_elements) return;
+
+      const frontElements = display.dynamic_card_elements.front || [];
+      const backElements = display.dynamic_card_elements.back || [];
+      const allElements = [...frontElements, ...backElements];
+
+      const criteriaElements = allElements.filter(
+        (el): el is DynamicCardElement & { asset_criteria: AssetCriteria } =>
+          el.content_type === 'image' && !!el.asset_criteria
+      );
+
+      if (criteriaElements.length === 0) return;
+
+      const newResolved: Record<string, string | null> = {};
+
+      await Promise.all(
+        criteriaElements.map(async (el) => {
+          const key = el.zone_id;
+          try {
+            const url = await resolveAssetCriteria(el.asset_criteria);
+            newResolved[key] = url;
+          } catch (error) {
+            console.error('Failed to resolve asset criteria:', error);
+            newResolved[key] = null;
+          }
+        })
+      );
+
+      setResolvedAssets((prev) => ({ ...prev, ...newResolved }));
+    };
+
+    resolveCriteriaAssets();
+  }, [display?.dynamic_card_elements]);
+
+  // Helper to get resolved URL for an element (criteria-based or direct)
+  const getResolvedImageUrl = (element: DynamicCardElement): string | null => {
+    if (element.logo_uri) {
+      return element.logo_uri;
+    }
+    if (element.asset_criteria) {
+      return resolvedAssets[element.zone_id] || null;
+    }
+    return null;
+  };
+
   // Check if the card can be flipped (has back zones)
   const canFlip = selectedTemplate && !selectedTemplate.frontOnly && selectedTemplate.back.zones.length > 0;
 
@@ -165,8 +220,7 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
     }
   }, [cardSide]);
 
-  // Try to find the requested locale, fallback to first available
-  const display = currentVct.display.find((d) => d.locale === locale) || currentVct.display[0];
+  // display was already defined above for asset resolution
   const effectiveLocale = display?.locale || locale;
 
   // Determine which side to show - clicking always toggles, buttons set a preference that can be toggled from
@@ -395,21 +449,33 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
                 alignItems: getVerticalAlignmentStyle(verticalAlignment),
               }}
             >
-              {element?.content_type === 'image' && element?.logo_uri ? (
-                <img
-                  src={element.logo_uri}
-                  alt={zone.name}
-                  className="object-contain"
-                  style={{
-                    maxWidth: `${100 * scale}%`,
-                    maxHeight: `${100 * scale}%`,
-                    transform: scale !== 1.0 ? `scale(${scale})` : undefined,
-                    transformOrigin: alignment === 'left' ? 'left center' : alignment === 'right' ? 'right center' : 'center center',
-                  }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
+              {element?.content_type === 'image' && (element?.logo_uri || element?.asset_criteria) ? (
+                (() => {
+                  const imageUrl = element ? getResolvedImageUrl(element) : null;
+                  if (!imageUrl) {
+                    return (
+                      <div className="text-xs text-gray-400 italic">
+                        {element?.asset_criteria ? 'Loading...' : 'No image'}
+                      </div>
+                    );
+                  }
+                  return (
+                    <img
+                      src={imageUrl}
+                      alt={zone.name}
+                      className="object-contain"
+                      style={{
+                        maxWidth: `${100 * scale}%`,
+                        maxHeight: `${100 * scale}%`,
+                        transform: scale !== 1.0 ? `scale(${scale})` : undefined,
+                        transformOrigin: alignment === 'left' ? 'left center' : alignment === 'right' ? 'right center' : 'center center',
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  );
+                })()
               ) : content ? (
                 textWrap ? (
                   // Wrapped text - allows multiple lines
@@ -507,21 +573,33 @@ export default function CredentialPreview({ locale, cardSide }: CredentialPrevie
                   alignItems: getVerticalAlignmentStyle(verticalAlignment),
                 }}
               >
-                {element?.content_type === 'image' && element?.logo_uri ? (
-                  <img
-                    src={element.logo_uri}
-                    alt={zone.name}
-                    className="object-contain"
-                    style={{
-                      maxWidth: `${100 * scale}%`,
-                      maxHeight: `${100 * scale}%`,
-                      transform: scale !== 1.0 ? `scale(${scale})` : undefined,
-                      transformOrigin: alignment === 'left' ? 'left center' : alignment === 'right' ? 'right center' : 'center center',
-                    }}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
+                {element?.content_type === 'image' && (element?.logo_uri || element?.asset_criteria) ? (
+                  (() => {
+                    const imageUrl = element ? getResolvedImageUrl(element) : null;
+                    if (!imageUrl) {
+                      return (
+                        <div className="text-xs text-gray-400 italic">
+                          {element?.asset_criteria ? 'Loading...' : 'No image'}
+                        </div>
+                      );
+                    }
+                    return (
+                      <img
+                        src={imageUrl}
+                        alt={zone.name}
+                        className="object-contain"
+                        style={{
+                          maxWidth: `${100 * scale}%`,
+                          maxHeight: `${100 * scale}%`,
+                          transform: scale !== 1.0 ? `scale(${scale})` : undefined,
+                          transformOrigin: alignment === 'left' ? 'left center' : alignment === 'right' ? 'right center' : 'center center',
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    );
+                  })()
                 ) : content ? (
                   textWrap ? (
                     // Wrapped text - allows multiple lines

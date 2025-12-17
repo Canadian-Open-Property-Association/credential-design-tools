@@ -603,6 +603,201 @@ Created by @${user.login} using the [COPA Apps](https://apps.openpropertyassocia
   }
 });
 
+// Publish individual entity statement to repository (creates branch + PR)
+// Creates a JSON file at credentials/entities/{entityId}.json
+router.post('/entity-statement', requireAuth, async (req, res) => {
+  try {
+    const { entityId, entity, title, description } = req.body;
+
+    if (!entityId || !entity) {
+      return res.status(400).json({ error: 'entityId and entity are required' });
+    }
+
+    const octokit = getOctokit(req);
+    const user = req.session.user;
+
+    // Determine the base branch for the PR
+    let baseBranch = GITHUB_BASE_BRANCH;
+    if (!baseBranch) {
+      const { data: repo } = await octokit.rest.repos.get({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+      });
+      baseBranch = repo.default_branch;
+    }
+
+    // Get the latest commit SHA of the base branch
+    const { data: ref } = await octokit.rest.git.getRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `heads/${baseBranch}`,
+    });
+    const baseSha = ref.object.sha;
+
+    // Create a new branch
+    const timestamp = Date.now();
+    const branchName = `entity/publish-${entityId}-${timestamp}`;
+
+    await octokit.rest.git.createRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `refs/heads/${branchName}`,
+      sha: baseSha,
+    });
+
+    // Check if file exists to get its SHA for update
+    const filePath = `${ENTITY_FOLDER_PATH}/${entityId}.json`;
+    let existingSha = null;
+    try {
+      const { data: existingFile } = await octokit.rest.repos.getContent({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+        path: filePath,
+        ref: baseBranch,
+      });
+      existingSha = existingFile.sha;
+    } catch (error) {
+      if (error.status !== 404) {
+        throw error;
+      }
+      // File doesn't exist, that's fine - we'll create it
+    }
+
+    // Prepare entity statement content
+    // Structure follows entity statement format for publishing
+    const entityStatement = {
+      id: entity.id,
+      name: entity.name,
+      description: entity.description || undefined,
+      entityTypes: entity.entityTypes || [],
+      dataProviderTypes: entity.dataProviderTypes || undefined,
+      serviceProviderTypes: entity.serviceProviderTypes || undefined,
+      regionsCovered: entity.regionsCovered || undefined,
+      status: entity.status,
+      // Visual identity
+      logoUri: entity.logoUri
+        ? entity.logoUri.startsWith('http') || entity.logoUri.startsWith('/')
+          ? entity.logoUri
+          : `${ENTITY_FOLDER_PATH}/logos/${entity.logoUri}`
+        : undefined,
+      primaryColor: entity.primaryColor || undefined,
+      // Contact & web
+      website: entity.website || undefined,
+      contactEmail: entity.contactEmail || undefined,
+      contactPhone: entity.contactPhone || undefined,
+      contactName: entity.contactName || undefined,
+      // Technical identity
+      did: entity.did || undefined,
+      // Metadata
+      publishedAt: new Date().toISOString(),
+      publishedBy: {
+        id: String(user.id),
+        login: user.login,
+        name: user.name || undefined,
+      },
+    };
+
+    // Remove undefined fields
+    Object.keys(entityStatement).forEach((key) => {
+      if (entityStatement[key] === undefined) {
+        delete entityStatement[key];
+      }
+    });
+
+    const fileContent = JSON.stringify(entityStatement, null, 2);
+    const encodedContent = Buffer.from(fileContent).toString('base64');
+
+    const isUpdate = existingSha !== null;
+    const commitMessage = isUpdate
+      ? `Update entity statement: ${entity.name}`
+      : `Add entity statement: ${entity.name}`;
+
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      path: filePath,
+      message: commitMessage,
+      content: encodedContent,
+      branch: branchName,
+      ...(existingSha && { sha: existingSha }),
+    });
+
+    // Create a pull request
+    const prTitle = title || (isUpdate ? `Update entity: ${entity.name}` : `Add entity: ${entity.name}`);
+    const prBody = description || `This PR ${isUpdate ? 'updates' : 'adds'} the entity statement for **${entity.name}** (\`${entityId}\`).
+
+**Entity Types:** ${entity.entityTypes?.join(', ') || 'None'}
+${entity.dataProviderTypes?.length ? `**Data Provider Types:** ${entity.dataProviderTypes.join(', ')}` : ''}
+${entity.regionsCovered?.length ? `**Regions Covered:** ${entity.regionsCovered.join(', ')}` : ''}
+
+Created by @${user.login} using the [COPA Apps](https://apps.openpropertyassociation.ca).`;
+
+    const { data: pr } = await octokit.rest.pulls.create({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      title: prTitle,
+      body: prBody,
+      head: branchName,
+      base: baseBranch,
+    });
+
+    res.json({
+      success: true,
+      pr: {
+        number: pr.number,
+        url: pr.html_url,
+        title: pr.title,
+      },
+      branch: branchName,
+      file: filePath,
+      uri: `${BASE_URL}/${filePath}`,
+      isUpdate,
+    });
+  } catch (error) {
+    console.error('Error creating entity statement PR:', error);
+    res.status(500).json({ error: error.message || 'Failed to create entity statement pull request' });
+  }
+});
+
+// Check if entity statement file exists in the repository
+router.get('/entity-statement/:entityId', requireAuth, async (req, res) => {
+  try {
+    const { entityId } = req.params;
+    const octokit = getOctokit(req);
+
+    const filePath = `${ENTITY_FOLDER_PATH}/${entityId}.json`;
+
+    try {
+      const { data } = await octokit.rest.repos.getContent({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+        path: filePath,
+        ...(GITHUB_BASE_BRANCH && { ref: GITHUB_BASE_BRANCH }),
+      });
+
+      // Decode and return the content
+      const content = Buffer.from(data.content, 'base64').toString('utf-8');
+      const entityData = JSON.parse(content);
+
+      res.json({
+        exists: true,
+        sha: data.sha,
+        uri: `${BASE_URL}/${filePath}`,
+        entity: entityData,
+      });
+    } catch (error) {
+      if (error.status === 404) {
+        res.json({ exists: false });
+      } else {
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('Error checking entity statement:', error);
+    res.status(500).json({ error: 'Failed to check entity statement' });
+  }
+});
+
 // ============================================
 // Vocabulary Management Endpoints
 // ============================================

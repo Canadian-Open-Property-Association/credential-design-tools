@@ -207,11 +207,16 @@ export default function EntityList({ onEditEntity, onAddEntity }: EntityListProp
                     {/* Name and badges */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-900 text-sm truncate">{entity.name}</div>
-                      {/* Entity type and data provider type badges */}
+                      {/* Entity types and data provider type badges */}
                       <div className="flex flex-wrap gap-1 mt-0.5">
-                        {entity.entityType && (
-                          <span className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded">
-                            {getEntityTypeLabel(entity.entityType)}
+                        {entity.entityTypes?.slice(0, 2).map(typeId => (
+                          <span key={typeId} className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded">
+                            {getEntityTypeLabel(typeId)}
+                          </span>
+                        ))}
+                        {(entity.entityTypes?.length || 0) > 2 && (
+                          <span className="text-xs text-gray-400">
+                            +{(entity.entityTypes?.length || 0) - 2} types
                           </span>
                         )}
                         {entity.dataProviderTypes?.slice(0, 2).map(type => (
