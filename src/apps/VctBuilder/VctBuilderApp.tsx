@@ -6,11 +6,12 @@ import { useAppTracking } from '../../hooks/useAppTracking';
 import MetadataForm from '../../components/FormPanel/MetadataForm';
 import DisplayForm from '../../components/FormPanel/DisplayForm';
 import ClaimsForm from '../../components/FormPanel/ClaimsForm';
+import CardZonesForm from '../../components/FormPanel/CardZonesForm';
 import JsonPreview from '../../components/JsonPanel/JsonPreview';
 import CredentialPreview from '../../components/PreviewPanel/CredentialPreview';
 import Toolbar from '../../components/Toolbar/Toolbar';
 
-type FormSection = 'metadata' | 'display' | 'claims';
+type FormSection = 'metadata' | 'display' | 'front' | 'back' | 'claims';
 type MobilePanel = 'form' | 'json' | 'preview';
 
 // Resizable divider component
@@ -119,6 +120,13 @@ export default function VctBuilderApp() {
 
   // Check if schema is selected (required for Claims tab)
   const hasSchemaSelected = Boolean(currentVct.schema_uri && currentVct.schema_uri.trim());
+
+  // Check if zone template is selected (required for Front/Back tabs)
+  const selectedTemplateId = useZoneTemplateStore((state) => state.selectedTemplateId);
+  const getTemplate = useZoneTemplateStore((state) => state.getTemplate);
+  const hasZoneTemplateSelected = Boolean(selectedTemplateId);
+  const selectedTemplate = selectedTemplateId ? getTemplate(selectedTemplateId) : null;
+  const isFrontOnly = selectedTemplate?.frontOnly ?? false;
 
   const handleLoad = (id: string) => {
     if (isDirty && !confirm('You have unsaved changes. Load anyway?')) {
@@ -298,7 +306,7 @@ export default function VctBuilderApp() {
             <div className="flex border-b border-gray-200 sticky top-0 bg-white z-10 flex-shrink-0">
               <button
                 onClick={() => setActiveSection('metadata')}
-                className={`flex-1 px-4 py-3 text-sm font-medium ${
+                className={`flex-1 px-3 py-3 text-sm font-medium ${
                   activeSection === 'metadata'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
@@ -308,7 +316,7 @@ export default function VctBuilderApp() {
               </button>
               <button
                 onClick={() => setActiveSection('display')}
-                className={`flex-1 px-4 py-3 text-sm font-medium ${
+                className={`flex-1 px-3 py-3 text-sm font-medium ${
                   activeSection === 'display'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
@@ -317,10 +325,42 @@ export default function VctBuilderApp() {
                 Display
               </button>
               <button
+                onClick={() => hasZoneTemplateSelected && setActiveSection('front')}
+                disabled={!hasZoneTemplateSelected}
+                title={!hasZoneTemplateSelected ? 'Select a zone template in Display tab first' : 'Configure front of card'}
+                className={`flex-1 px-3 py-3 text-sm font-medium ${
+                  activeSection === 'front'
+                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                    : !hasZoneTemplateSelected
+                    ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                Front
+                {!hasZoneTemplateSelected && <span className="ml-1 text-xs">🔒</span>}
+              </button>
+              {!isFrontOnly && (
+                <button
+                  onClick={() => hasZoneTemplateSelected && setActiveSection('back')}
+                  disabled={!hasZoneTemplateSelected}
+                  title={!hasZoneTemplateSelected ? 'Select a zone template in Display tab first' : 'Configure back of card'}
+                  className={`flex-1 px-3 py-3 text-sm font-medium ${
+                    activeSection === 'back'
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                      : !hasZoneTemplateSelected
+                      ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  }`}
+                >
+                  Back
+                  {!hasZoneTemplateSelected && <span className="ml-1 text-xs">🔒</span>}
+                </button>
+              )}
+              <button
                 onClick={() => hasSchemaSelected && setActiveSection('claims')}
                 disabled={!hasSchemaSelected}
                 title={!hasSchemaSelected ? 'Select a schema first to configure claims' : 'Configure credential claims'}
-                className={`flex-1 px-4 py-3 text-sm font-medium ${
+                className={`flex-1 px-3 py-3 text-sm font-medium ${
                   activeSection === 'claims'
                     ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                     : !hasSchemaSelected
@@ -337,6 +377,8 @@ export default function VctBuilderApp() {
             <div className="p-4 flex-1 overflow-y-auto">
               {activeSection === 'metadata' && <MetadataForm />}
               {activeSection === 'display' && <DisplayForm />}
+              {activeSection === 'front' && <CardZonesForm face="front" displayIndex={0} />}
+              {activeSection === 'back' && <CardZonesForm face="back" displayIndex={0} />}
               {activeSection === 'claims' && <ClaimsForm />}
             </div>
           </div>

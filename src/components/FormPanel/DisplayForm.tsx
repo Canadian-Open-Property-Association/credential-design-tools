@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useVctStore } from '../../store/vctStore';
+import { useZoneTemplateStore } from '../../store/zoneTemplateStore';
 import { AVAILABLE_LOCALES, getLocaleName, VCTRendering, FONT_FAMILY_OPTIONS } from '../../types/vct';
-import CardElementsForm from './CardElementsForm';
+import ZoneTemplateSelector from '../ZoneEditor/ZoneTemplateSelector';
+import ZoneTemplateLibrary from '../Library/ZoneTemplateLibrary';
 import AssetLibrary from '../AssetLibrary/AssetLibrary';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5174';
@@ -11,10 +13,22 @@ export default function DisplayForm() {
   const updateDisplay = useVctStore((state) => state.updateDisplay);
   const addDisplay = useVctStore((state) => state.addDisplay);
   const removeDisplay = useVctStore((state) => state.removeDisplay);
+  const setDynamicCardElementsTemplate = useVctStore((state) => state.setDynamicCardElementsTemplate);
   const [activeTab, setActiveTab] = useState(0);
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [cardStylingCollapsed, setCardStylingCollapsed] = useState(false);
   const [displayConfigCollapsed, setDisplayConfigCollapsed] = useState(false);
+  const [showZoneLibrary, setShowZoneLibrary] = useState(false);
+
+  // Zone template state
+  const selectedTemplateId = useZoneTemplateStore((state) => state.selectedTemplateId);
+  const selectTemplate = useZoneTemplateStore((state) => state.selectTemplate);
+
+  // Handle template selection - update both zone template store and VCT
+  const handleTemplateSelect = (templateId: string) => {
+    selectTemplate(templateId);
+    setDynamicCardElementsTemplate(activeTab, templateId);
+  };
 
   // Get the primary display (index 0) for global styling
   const primaryDisplay = currentVct.display[0];
@@ -357,14 +371,38 @@ export default function DisplayForm() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
                   />
                 </div>
-
-                {/* Card Elements Configuration */}
-                <CardElementsForm displayIndex={activeTab} />
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* Zone Template Section */}
+      <div className="border border-gray-200 rounded-lg p-4 space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-1">Zone Template</h3>
+          <p className="text-sm text-gray-500">
+            Select a zone template to define the layout of your credential card. Once selected, configure zones in the Front and Back tabs.
+          </p>
+        </div>
+        <ZoneTemplateSelector
+          selectedTemplateId={selectedTemplateId}
+          onSelect={handleTemplateSelect}
+          onManageClick={() => setShowZoneLibrary(true)}
+        />
+        {selectedTemplateId && (
+          <p className="text-xs text-green-600 bg-green-50 px-3 py-2 rounded-md">
+            Template selected. Use the <strong>Front</strong> and <strong>Back</strong> tabs above to configure each zone.
+          </p>
+        )}
+      </div>
+
+      {/* Zone Template Library Modal */}
+      <ZoneTemplateLibrary
+        isOpen={showZoneLibrary}
+        onClose={() => setShowZoneLibrary(false)}
+        onSelectTemplate={selectTemplate}
+      />
 
       {/* Asset Library Modal */}
       <AssetLibrary
