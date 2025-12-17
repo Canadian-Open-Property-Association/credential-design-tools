@@ -162,8 +162,10 @@ export interface VCTCardElements {
 // Content type for zone elements
 export type ZoneContentType = 'text' | 'image';
 
-// Entity role for asset criteria (which entity provides the asset)
-export type AssetEntityRole = 'issuer' | 'furnisher' | 'verifier';
+// Entity type for asset criteria (which entity type provides the asset)
+// Uses entity type IDs from settings (e.g., 'data-furnisher', 'service-provider', 'portfolio-issuer')
+// Legacy values: 'issuer', 'furnisher', 'verifier' are still supported for backwards compatibility
+export type AssetEntityRole = string;
 
 // Asset type options
 export type AssetTypeOption = 'entity-logo' | 'credential-background' | 'credential-icon';

@@ -46,32 +46,29 @@ export async function resolveAssetCriteria(criteria: AssetCriteria): Promise<str
 
     // Filter entities based on criteria
     const matchingEntities = entities.filter((entity) => {
-      // For 'furnisher' role, check if entity has data-furnisher type and matching data provider type
-      if (criteria.entityRole === 'furnisher') {
-        const isDataFurnisher = entity.entityTypes?.includes('data-furnisher');
-        if (!isDataFurnisher) return false;
+      // Map legacy role values to entity type IDs
+      const legacyRoleMap: Record<string, string> = {
+        furnisher: 'data-furnisher',
+        issuer: 'portfolio-issuer',
+        verifier: 'verifier', // placeholder - may not exist
+      };
+      const entityTypeId = legacyRoleMap[criteria.entityRole] || criteria.entityRole;
 
-        // If a specific data provider type is required, check for it
-        if (criteria.dataProviderType) {
-          // Cast to string array since dataProviderType values match but types differ
-          return (entity.dataProviderTypes as string[] | undefined)?.includes(criteria.dataProviderType);
-        }
-        return true;
+      // Check if entity has the required entity type
+      const hasEntityType = entity.entityTypes?.includes(entityTypeId);
+      if (!hasEntityType) return false;
+
+      // For data-furnisher, check data provider type if specified
+      if (entityTypeId === 'data-furnisher' && criteria.dataProviderType) {
+        return (entity.dataProviderTypes as string[] | undefined)?.includes(criteria.dataProviderType);
       }
 
-      // For 'issuer' role - TODO: implement issuer matching logic
-      // For now, we return entities that have the portfolio-issuer type
-      if (criteria.entityRole === 'issuer') {
-        return entity.entityTypes?.includes('portfolio-issuer');
+      // For service-provider, check service provider type if specified
+      if (entityTypeId === 'service-provider' && criteria.dataProviderType) {
+        return (entity.serviceProviderTypes as string[] | undefined)?.includes(criteria.dataProviderType);
       }
 
-      // For 'verifier' role - TODO: implement verifier matching logic
-      if (criteria.entityRole === 'verifier') {
-        // For now, we don't have a verifier type, so return false
-        return false;
-      }
-
-      return false;
+      return true;
     });
 
     if (matchingEntities.length === 0) {
@@ -144,22 +141,27 @@ export async function resolveAssetCriteria(criteria: AssetCriteria): Promise<str
 export function getAssetCriteriaLabel(criteria: AssetCriteria): string {
   const parts: string[] = [];
 
-  // Role
-  const roleLabels: Record<string, string> = {
+  // Entity type - map IDs to human-readable labels
+  const entityTypeLabels: Record<string, string> = {
+    // Legacy values
     issuer: 'Issuer',
     furnisher: 'Furnisher',
     verifier: 'Verifier',
+    // New entity type IDs
+    'data-furnisher': 'Data Furnisher',
+    'service-provider': 'Service Provider',
+    'portfolio-issuer': 'Portfolio Issuer',
   };
-  parts.push(roleLabels[criteria.entityRole] || criteria.entityRole);
+  parts.push(entityTypeLabels[criteria.entityRole] || formatLabel(criteria.entityRole));
 
-  // Data provider type (if furnisher)
-  if (criteria.entityRole === 'furnisher' && criteria.dataProviderType) {
-    // Format the type nicely (e.g., 'title-ownership' -> 'Title/Ownership')
-    const formatted = criteria.dataProviderType
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join('/');
-    parts.push(formatted);
+  // Data provider type (if data-furnisher or legacy furnisher)
+  if ((criteria.entityRole === 'data-furnisher' || criteria.entityRole === 'furnisher') && criteria.dataProviderType) {
+    parts.push(formatLabel(criteria.dataProviderType));
+  }
+
+  // Service provider type (if service-provider)
+  if (criteria.entityRole === 'service-provider' && criteria.dataProviderType) {
+    parts.push(formatLabel(criteria.dataProviderType));
   }
 
   // Asset type
@@ -171,6 +173,16 @@ export function getAssetCriteriaLabel(criteria: AssetCriteria): string {
   parts.push(assetTypeLabels[criteria.assetType] || criteria.assetType);
 
   return parts.join(' > ');
+}
+
+/**
+ * Format a kebab-case ID to a human-readable label
+ */
+function formatLabel(id: string): string {
+  return id
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 /**

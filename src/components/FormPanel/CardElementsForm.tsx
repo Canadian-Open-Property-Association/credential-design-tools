@@ -33,7 +33,7 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
   const currentVct = useVctStore((state) => state.currentVct);
   const display = currentVct.display[displayIndex];
   const dynamicElements = display?.dynamic_card_elements;
-  const { settings } = useFurnisherSettingsStore();
+  const { settings, fetchSettings } = useFurnisherSettingsStore();
 
   // Zone selection state
   const selectedZoneId = useZoneSelectionStore((state) => state.selectedZoneId);
@@ -42,6 +42,47 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
 
   const [frontExpanded, setFrontExpanded] = useState(true);
   const [backExpanded, setBackExpanded] = useState(!template.frontOnly);
+
+  // Track which individual zones are expanded (all start collapsed)
+  const [expandedZones, setExpandedZones] = useState<Set<string>>(new Set());
+
+  // Fetch settings on mount if not loaded
+  useEffect(() => {
+    if (!settings) {
+      fetchSettings();
+    }
+  }, [settings, fetchSettings]);
+
+  // Toggle individual zone expansion
+  const toggleZoneExpanded = (zoneId: string) => {
+    setExpandedZones((prev) => {
+      const next = new Set(prev);
+      if (next.has(zoneId)) {
+        next.delete(zoneId);
+      } else {
+        next.add(zoneId);
+      }
+      return next;
+    });
+  };
+
+  // Reset a zone to default state
+  const handleResetZone = (face: 'front' | 'back', zoneId: string) => {
+    if (updateDynamicElement) {
+      updateDynamicElement(displayIndex, face, zoneId, {
+        content_type: 'text',
+        claim_path: undefined,
+        static_value: undefined,
+        label: undefined,
+        logo_uri: undefined,
+        asset_criteria: undefined,
+        alignment: 'center',
+        verticalAlignment: 'middle',
+        scale: 1.0,
+        textWrap: false,
+      });
+    }
+  };
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [assetPickerZoneId, setAssetPickerZoneId] = useState<string | null>(null);
   const [assetPickerFace, setAssetPickerFace] = useState<'front' | 'back'>('front');
@@ -61,6 +102,13 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
       } else if (selectedFace === 'back' && !backExpanded) {
         setBackExpanded(true);
       }
+
+      // Also expand the individual zone
+      setExpandedZones((prev) => {
+        const next = new Set(prev);
+        next.add(selectedZoneId);
+        return next;
+      });
 
       // Small delay to allow expansion animation
       setTimeout(() => {
@@ -138,27 +186,78 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
     const scale = element?.scale || 1.0;
     const textWrap = element?.textWrap || false;
     const isSelected = selectedZoneId === zone.id;
+    const isExpanded = expandedZones.has(zone.id);
+
+    // Get a summary of the zone content for collapsed display
+    const getZoneSummary = () => {
+      if (contentType === 'image') {
+        if (element?.asset_criteria) {
+          return `Image: Dynamic (${element.asset_criteria.entityRole})`;
+        }
+        if (element?.logo_uri) {
+          return 'Image: Specific asset';
+        }
+        return 'Image: Not configured';
+      }
+      if (element?.claim_path) {
+        const claim = claimPaths.find(c => c.path === element.claim_path);
+        return `Text: ${claim?.label || element.claim_path}`;
+      }
+      if (element?.static_value) {
+        return `Text: "${element.static_value.substring(0, 20)}${element.static_value.length > 20 ? '...' : ''}"`;
+      }
+      return 'Not configured';
+    };
 
     return (
       <div
         key={zone.id}
         ref={(el) => { zoneRefs.current[zone.id] = el; }}
-        className={`border rounded p-3 space-y-2 transition-all duration-300 ${isSelected ? 'ring-2 ring-blue-400 ring-offset-2' : ''}`}
+        className={`border rounded transition-all duration-300 ${isSelected ? 'ring-2 ring-blue-400 ring-offset-2' : ''}`}
         style={{ borderLeftColor: zoneColor, borderLeftWidth: '4px' }}
       >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-sm font-medium text-gray-700">Zone {index + 1}</span>
-            {zone.subtitle && (
-              <span className="ml-2 text-xs text-gray-500">{zone.subtitle}</span>
-            )}
+        {/* Collapsible Header */}
+        <div
+          className="flex justify-between items-center p-3 cursor-pointer hover:bg-gray-50"
+          onClick={() => toggleZoneExpanded(zone.id)}
+        >
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: zoneColor }}
+              title={zone.name}
+            />
+            <div className="min-w-0 flex-1">
+              <span className="text-sm font-medium text-gray-700">Zone {index + 1}</span>
+              {zone.subtitle && (
+                <span className="ml-2 text-xs text-gray-500">{zone.subtitle}</span>
+              )}
+              {!isExpanded && (
+                <span className="ml-2 text-xs text-gray-400 truncate">— {getZoneSummary()}</span>
+              )}
+            </div>
           </div>
-          <span
-            className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: zoneColor }}
-            title={zone.name}
-          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleResetZone(face, zone.id);
+              }}
+              className="text-xs text-gray-400 hover:text-red-500 px-2 py-1 rounded hover:bg-gray-100"
+              title="Reset zone"
+            >
+              Reset
+            </button>
+            <span className={`transform transition-transform text-gray-400 ${isExpanded ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </div>
         </div>
+
+        {/* Collapsible Content */}
+        {isExpanded && (
+          <div className="p-3 pt-0 space-y-2 border-t border-gray-100">
 
         {/* Content Type Selector */}
         <div>
@@ -272,8 +371,9 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
                   onClick={() => {
                     // Switch to criteria mode - clear logo_uri and set default criteria
                     handleElementChange(face, zone.id, 'logo_uri', undefined);
+                    const defaultEntityType = settings?.entityTypes?.[0]?.id || 'data-furnisher';
                     handleElementChange(face, zone.id, 'asset_criteria', {
-                      entityRole: 'furnisher',
+                      entityRole: defaultEntityType,
                       assetType: 'entity-logo',
                     });
                   }}
@@ -339,9 +439,9 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
                   Asset will be dynamically selected based on criteria:
                 </p>
 
-                {/* Entity Role */}
+                {/* Entity Type */}
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Entity Role</label>
+                  <label className="block text-xs text-gray-600 mb-1">Entity Type</label>
                   <select
                     value={element.asset_criteria.entityRole}
                     onChange={(e) => {
@@ -349,20 +449,22 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
                       handleElementChange(face, zone.id, 'asset_criteria', {
                         ...element.asset_criteria!,
                         entityRole: newRole,
-                        // Clear data provider type if not furnisher
-                        dataProviderType: newRole === 'furnisher' ? element.asset_criteria?.dataProviderType : undefined,
+                        // Clear data provider type if not data-furnisher
+                        dataProviderType: newRole === 'data-furnisher' ? element.asset_criteria?.dataProviderType : undefined,
                       });
                     }}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white"
                   >
-                    <option value="issuer">Issuer</option>
-                    <option value="furnisher">Furnisher (Data Provider)</option>
-                    <option value="verifier">Verifier</option>
+                    {(settings?.entityTypes || []).map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                {/* Data Provider Type - only for furnisher */}
-                {element.asset_criteria.entityRole === 'furnisher' && (
+                {/* Data Provider Type - only for data-furnisher entity type */}
+                {element.asset_criteria.entityRole === 'data-furnisher' && (
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Data Provider Type</label>
                     <select
@@ -385,6 +487,30 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
                     <p className="text-xs text-gray-500 mt-1">
                       e.g., "Identity" will show logos from identity data providers
                     </p>
+                  </div>
+                )}
+
+                {/* Service Provider Type - only for service-provider entity type */}
+                {element.asset_criteria.entityRole === 'service-provider' && settings?.serviceProviderTypes && settings.serviceProviderTypes.length > 0 && (
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Service Provider Type</label>
+                    <select
+                      value={element.asset_criteria.dataProviderType || ''}
+                      onChange={(e) => {
+                        handleElementChange(face, zone.id, 'asset_criteria', {
+                          ...element.asset_criteria!,
+                          dataProviderType: e.target.value || undefined,
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded bg-white"
+                    >
+                      <option value="">Any service provider</option>
+                      {(settings?.serviceProviderTypes || []).map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
 
@@ -597,6 +723,8 @@ function DynamicZoneElementsForm({ template, displayIndex, claimPaths }: Dynamic
             )}
           </div>
         </div>
+          </div>
+        )}
       </div>
     );
   };
