@@ -84,6 +84,30 @@ export default function SchemaInfoTab() {
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
             />
           </div>
+
+          {/* W3C Compliance: Additional Properties Toggle */}
+          <div className="pt-2">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="relative flex items-center pt-0.5">
+                <input
+                  type="checkbox"
+                  checked={metadata.additionalProperties !== true}
+                  onChange={(e) => updateMetadata({ additionalProperties: !e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-300 transition-colors"></div>
+                <div className="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow-sm peer-checked:translate-x-4 transition-transform"></div>
+              </div>
+              <div className="flex-1">
+                <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                  Strict validation mode
+                </span>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Reject credentials with extra fields not defined in schema (W3C recommended)
+                </p>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
 

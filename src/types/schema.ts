@@ -121,6 +121,9 @@ export interface SchemaMetadata {
   category?: string;             // Category slug (e.g., "property", "identity", "badge")
   credentialName?: string;       // Credential name slug (e.g., "home-credential")
 
+  // W3C vc-json-schema compliance
+  additionalProperties?: boolean; // If false, rejects extra fields not in schema (default: false for strict validation)
+
   // VCT Reference (for SD-JWT mode) - links schema to VCT definition
   vctUri?: string;               // Selected VCT URI from library
   vctName?: string;              // Display name of selected VCT
@@ -312,6 +315,8 @@ export const createDefaultMetadata = (): SchemaMetadata => ({
   description: '',
   governanceDocUrl: undefined,
   governanceDocName: undefined,
+  // W3C vc-json-schema compliance - default to strict mode
+  additionalProperties: false,
   // Standard claims defaults
   standardClaims: { ...DEFAULT_STANDARD_CLAIMS },
   // JSON-LD mode defaults
@@ -335,6 +340,9 @@ export const createDefaultProperty = (id: string): SchemaProperty => ({
 // Convert internal schema representation to JSON Schema Draft 2020-12
 // Outputs only credentialSubject validation - JWT wrapper claims are spec-defined
 export const toJsonSchema = (metadata: SchemaMetadata, properties: SchemaProperty[]): object => {
+  // Determine if we should restrict additional properties (default: true for W3C compliance)
+  const restrictAdditionalProps = metadata.additionalProperties === false || metadata.additionalProperties === undefined;
+
   const buildPropertySchema = (prop: SchemaProperty): object => {
     const schema: Record<string, unknown> = {
       title: prop.title || prop.name,
@@ -351,7 +359,12 @@ export const toJsonSchema = (metadata: SchemaMetadata, properties: SchemaPropert
       if (prop.maxLength !== undefined) schema.maxLength = prop.maxLength;
       if (prop.format) schema.format = prop.format;
       if (prop.pattern) schema.pattern = prop.pattern;
-      if (prop.enum && prop.enum.length > 0) schema.enum = prop.enum;
+      // W3C vc-json-schema: Use const for single-value enums
+      if (prop.enum && prop.enum.length === 1) {
+        schema.const = prop.enum[0];
+      } else if (prop.enum && prop.enum.length > 1) {
+        schema.enum = prop.enum;
+      }
     }
 
     // Number/Integer constraints
@@ -388,6 +401,10 @@ export const toJsonSchema = (metadata: SchemaMetadata, properties: SchemaPropert
       if (nestedRequired.length > 0) {
         schema.required = nestedRequired;
       }
+      // W3C vc-json-schema: Apply additionalProperties to nested objects too
+      if (restrictAdditionalProps) {
+        schema.additionalProperties = false;
+      }
     }
 
     return schema;
@@ -409,6 +426,18 @@ export const toJsonSchema = (metadata: SchemaMetadata, properties: SchemaPropert
   // Auto-generate $id from title if not provided
   const schemaId = metadata.schemaId || generateSchemaId(metadata.title);
 
+  // Build credentialSubject schema with optional additionalProperties restriction
+  const credentialSubjectSchema: Record<string, unknown> = {
+    type: 'object',
+    properties: credentialSubjectProps,
+    ...(credentialSubjectRequired.length > 0 ? { required: credentialSubjectRequired } : {}),
+  };
+
+  // W3C vc-json-schema: Add additionalProperties: false for strict validation
+  if (restrictAdditionalProps) {
+    credentialSubjectSchema.additionalProperties = false;
+  }
+
   // Build schema - only validates credentialSubject
   // JWT wrapper claims (iss, iat, exp, vct, etc.) are spec-defined and don't need per-schema validation
   const schema: Record<string, unknown> = {
@@ -417,11 +446,7 @@ export const toJsonSchema = (metadata: SchemaMetadata, properties: SchemaPropert
     title: metadata.title,
     type: 'object',
     properties: {
-      credentialSubject: {
-        type: 'object',
-        properties: credentialSubjectProps,
-        ...(credentialSubjectRequired.length > 0 ? { required: credentialSubjectRequired } : {}),
-      },
+      credentialSubject: credentialSubjectSchema,
     },
   };
 
@@ -488,6 +513,9 @@ export const toJsonLdContext = (
   const schemaId = metadata.schemaId ||
     generateSchemaId(metadata.title, metadata.category, metadata.credentialName);
 
+  // Determine if we should restrict additional properties (default: true for W3C compliance)
+  const restrictAdditionalProps = metadata.additionalProperties === false || metadata.additionalProperties === undefined;
+
   /**
    * Build JSON Schema property definition from SchemaProperty
    */
@@ -506,7 +534,12 @@ export const toJsonLdContext = (
       if (prop.minLength !== undefined) schema.minLength = prop.minLength;
       if (prop.maxLength !== undefined) schema.maxLength = prop.maxLength;
       if (prop.pattern) schema.pattern = prop.pattern;
-      if (prop.enum && prop.enum.length > 0) schema.enum = prop.enum;
+      // W3C vc-json-schema: Use const for single-value enums
+      if (prop.enum && prop.enum.length === 1) {
+        schema.const = prop.enum[0];
+      } else if (prop.enum && prop.enum.length > 1) {
+        schema.enum = prop.enum;
+      }
     }
 
     // Number/Integer constraints
@@ -543,6 +576,10 @@ export const toJsonLdContext = (
       if (nestedRequired.length > 0) {
         schema.required = nestedRequired;
       }
+      // W3C vc-json-schema: Apply additionalProperties to nested objects too
+      if (restrictAdditionalProps) {
+        schema.additionalProperties = false;
+      }
     }
 
     return schema;
@@ -564,6 +601,18 @@ export const toJsonLdContext = (
   // Credential type name (PascalCase from title) for description
   const credentialTypeName = metadata.title ? getSchemaPrefix(metadata.title) : 'Credential';
 
+  // Build credentialSubject schema with optional additionalProperties restriction
+  const credentialSubjectSchema: Record<string, unknown> = {
+    type: 'object',
+    properties: credentialSubjectProps,
+    ...(credentialSubjectRequired.length > 0 ? { required: credentialSubjectRequired } : {}),
+  };
+
+  // W3C vc-json-schema: Add additionalProperties: false for strict validation
+  if (restrictAdditionalProps) {
+    credentialSubjectSchema.additionalProperties = false;
+  }
+
   // Build the JSON Schema following W3C VC JSON Schema Specification pattern
   // This simplified structure focuses on credentialSubject validation only
   const schema: Record<string, unknown> = {
@@ -573,11 +622,7 @@ export const toJsonLdContext = (
     description: metadata.description || `${credentialTypeName} using JsonSchema`,
     type: 'object',
     properties: {
-      credentialSubject: {
-        type: 'object',
-        properties: credentialSubjectProps,
-        ...(credentialSubjectRequired.length > 0 ? { required: credentialSubjectRequired } : {}),
-      },
+      credentialSubject: credentialSubjectSchema,
     },
   };
 
