@@ -50,13 +50,20 @@ export interface CredentialSourceConfig {
   supportedWallets?: string[];     // e.g., ["BC Wallet", "COPA Wallet"]
 }
 
+// Data source type discriminator
+export type DataSourceType = 'api' | 'credential' | 'swagger';
+
 // A named data source within an entity
 export interface FurnisherDataSource {
   id: string;
-  name: string;                    // e.g., "Person Credential"
+  name: string;                    // e.g., "Person Credential" or "Interac Bank Verification"
   description?: string;
 
-  // Credential configuration
+  // Source type: 'api' for manual API entry, 'credential' for VC, 'swagger' for OpenAPI import
+  // Defaults to 'credential' for backwards compatibility
+  sourceType?: DataSourceType;
+
+  // Credential configuration (only relevant for sourceType='credential')
   credentialConfig?: CredentialSourceConfig;
 
   // Fields/claims this source provides

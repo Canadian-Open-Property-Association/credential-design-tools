@@ -185,6 +185,7 @@ export function createDataSource(
     id: generateId('source'),
     name,
     description: spec.info.description || `Imported from ${spec.info.title}`,
+    sourceType: 'swagger' as const,
     fields: Array.from(fieldsMap.values()),
     notes: `Imported from OpenAPI spec: ${spec.originalUrl}`,
     createdAt: new Date().toISOString(),

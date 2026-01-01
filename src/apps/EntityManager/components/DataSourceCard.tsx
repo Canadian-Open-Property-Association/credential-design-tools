@@ -65,16 +65,38 @@ export default function DataSourceCard({ entityId, source, onEdit, onDelete, onU
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
       {/* Header */}
       <div
-        className="px-4 py-3 flex items-center justify-between cursor-pointer bg-purple-50 border-l-4 border-purple-500"
+        className={`px-4 py-3 flex items-center justify-between cursor-pointer border-l-4 ${
+          source.sourceType === 'api'
+            ? 'bg-blue-50 border-blue-500'
+            : source.sourceType === 'swagger'
+            ? 'bg-green-50 border-green-500'
+            : 'bg-purple-50 border-purple-500'
+        }`}
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
-          <span className="text-xl">🎫</span>
+          {source.sourceType === 'api' ? (
+            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          ) : source.sourceType === 'swagger' ? (
+            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          ) : (
+            <span className="text-xl">🎫</span>
+          )}
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium text-gray-900">{source.name}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                Credential
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                source.sourceType === 'api'
+                  ? 'bg-blue-100 text-blue-700'
+                  : source.sourceType === 'swagger'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-purple-100 text-purple-700'
+              }`}>
+                {source.sourceType === 'api' ? 'API' : source.sourceType === 'swagger' ? 'OpenAPI' : 'Credential'}
               </span>
             </div>
             {source.description && (
@@ -84,7 +106,7 @@ export default function DataSourceCard({ entityId, source, onEdit, onDelete, onU
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded">
-            {fields.length} {fields.length === 1 ? 'claim' : 'claims'}
+            {fields.length} {source.sourceType === 'api' ? (fields.length === 1 ? 'field' : 'fields') : (fields.length === 1 ? 'claim' : 'claims')}
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}

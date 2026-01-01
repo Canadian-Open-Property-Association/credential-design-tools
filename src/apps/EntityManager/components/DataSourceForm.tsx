@@ -81,6 +81,7 @@ export default function DataSourceForm({ source, onSave, onClose }: DataSourceFo
       id: source?.id || `source-${Date.now()}`,
       name: name.trim(),
       description: description.trim() || undefined,
+      sourceType: 'credential',
       credentialConfig,
       fields,
       notes: notes.trim() || undefined,

@@ -3,6 +3,7 @@ import type { Entity, FurnisherDataSchema, FurnisherDataSource } from '../../../
 import { migrateDataSchema } from '../../../types/entity';
 import DataSourceCard from './DataSourceCard';
 import DataSourceForm from './DataSourceForm';
+import ApiDataSourceForm from './ApiDataSourceForm';
 import SwaggerImportWizard from './SwaggerImportWizard';
 
 interface DataSourcesSectionProps {
@@ -12,6 +13,7 @@ interface DataSourcesSectionProps {
 
 export default function DataSourcesSection({ entity, onUpdateSchema }: DataSourcesSectionProps) {
   const [showSourceForm, setShowSourceForm] = useState(false);
+  const [showApiSourceForm, setShowApiSourceForm] = useState(false);
   const [editingSource, setEditingSource] = useState<FurnisherDataSource | null>(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showSwaggerWizard, setShowSwaggerWizard] = useState(false);
@@ -41,6 +43,12 @@ export default function DataSourcesSection({ entity, onUpdateSchema }: DataSourc
     setShowSourceForm(true);
   };
 
+  const handleAddSourceApi = () => {
+    setShowAddMenu(false);
+    setEditingSource(null);
+    setShowApiSourceForm(true);
+  };
+
   const handleAddSourceSwagger = () => {
     setShowAddMenu(false);
     setShowSwaggerWizard(true);
@@ -55,7 +63,12 @@ export default function DataSourcesSection({ entity, onUpdateSchema }: DataSourc
 
   const handleEditSource = (source: FurnisherDataSource) => {
     setEditingSource(source);
-    setShowSourceForm(true);
+    // Open the appropriate form based on source type
+    if (source.sourceType === 'api') {
+      setShowApiSourceForm(true);
+    } else {
+      setShowSourceForm(true);
+    }
   };
 
   const handleDeleteSource = (sourceId: string) => {
@@ -138,6 +151,18 @@ export default function DataSourcesSection({ entity, onUpdateSchema }: DataSourc
                 </div>
               </button>
               <button
+                onClick={handleAddSourceApi}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+              >
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div>
+                  <div className="font-medium">API Data Source</div>
+                  <div className="text-xs text-gray-500">Manual entry for API attributes</div>
+                </div>
+              </button>
+              <button
                 onClick={handleAddSourceManual}
                 className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
               >
@@ -157,32 +182,42 @@ export default function DataSourcesSection({ entity, onUpdateSchema }: DataSourc
       {/* Empty State */}
       {sources.length === 0 ? (
         <div className="bg-gray-50 rounded-lg border border-gray-200 px-6 py-10 text-center">
-          <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">🎫</span>
+          <div className="w-12 h-12 rounded-xl bg-gray-200 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+            </svg>
           </div>
           <p className="text-sm text-gray-600 mb-2">No data sources defined yet</p>
           <p className="text-xs text-gray-400 mb-4 max-w-sm mx-auto">
-            Add data sources to describe the verifiable credentials this furnisher issues to holder wallets
+            Add data sources to describe the data this entity provides via API or as verifiable credentials
           </p>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-2 flex-wrap">
             <button
               onClick={handleAddSourceSwagger}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
-              From Swagger
+              Swagger
             </button>
-            <span className="text-gray-400">or</span>
+            <button
+              onClick={handleAddSourceApi}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              API
+            </button>
             <button
               onClick={handleAddSourceManual}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
               </svg>
-              Verifiable Credential
+              Credential
             </button>
           </div>
         </div>
@@ -234,6 +269,18 @@ export default function DataSourcesSection({ entity, onUpdateSchema }: DataSourc
         <SwaggerImportWizard
           onImport={handleSwaggerImport}
           onClose={() => setShowSwaggerWizard(false)}
+        />
+      )}
+
+      {/* API Data Source Form */}
+      {showApiSourceForm && (
+        <ApiDataSourceForm
+          source={editingSource}
+          onSave={handleSaveSource}
+          onClose={() => {
+            setShowApiSourceForm(false);
+            setEditingSource(null);
+          }}
         />
       )}
     </div>
