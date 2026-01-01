@@ -32,71 +32,75 @@ export default function EntityNode({
       onClick={onClick}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
-      className="cursor-pointer"
-      style={{
-        animation: `float 3s ease-in-out infinite`,
-        animationDelay: `${animationDelay}s`,
-      }}
+      className="cursor-pointer entity-node"
     >
-      {/* Glow effect on hover/selection */}
-      <circle
-        cx={0}
-        cy={0}
-        r={halfSize + 4}
-        className={`transition-all duration-200 ${
-          isSelected
-            ? 'fill-blue-500/30'
-            : 'fill-transparent hover:fill-white/10'
-        }`}
+      {/* Inner group for animation - separates position from animation transform */}
+      <g
+        className="entity-node-inner"
         style={{
-          filter: isSelected ? 'blur(8px)' : undefined,
+          animationDelay: `${animationDelay}s`,
         }}
-      />
-
-      {/* Background circle */}
-      <circle
-        cx={0}
-        cy={0}
-        r={halfSize}
-        className={`fill-slate-700 stroke-slate-500 transition-all duration-200 ${
-          isSelected ? 'stroke-blue-400 stroke-2' : 'stroke-1 hover:stroke-slate-400'
-        }`}
-      />
-
-      {/* Clip path for logo */}
-      <defs>
-        <clipPath id={`clip-${entity.id}`}>
-          <circle cx={0} cy={0} r={halfSize - 4} />
-        </clipPath>
-      </defs>
-
-      {/* Logo or initials */}
-      {logoUrl && !imageError ? (
-        <image
-          href={logoUrl}
-          x={-halfSize + 4}
-          y={-halfSize + 4}
-          width={size - 8}
-          height={size - 8}
-          clipPath={`url(#clip-${entity.id})`}
-          preserveAspectRatio="xMidYMid slice"
-          onError={() => setImageError(true)}
-          className="pointer-events-none"
+      >
+        {/* Glow effect on hover/selection */}
+        <circle
+          cx={0}
+          cy={0}
+          r={halfSize + 4}
+          className={`transition-all duration-200 ${
+            isSelected
+              ? 'fill-blue-500/30'
+              : 'fill-transparent hover:fill-white/10'
+          }`}
+          style={{
+            filter: isSelected ? 'blur(8px)' : undefined,
+          }}
         />
-      ) : (
-        <text
-          x={0}
-          y={0}
-          textAnchor="middle"
-          dominantBaseline="central"
-          className="fill-slate-300 text-xs font-medium pointer-events-none select-none"
-          style={{ fontSize: '14px' }}
-        >
-          {entity.name.substring(0, 2).toUpperCase()}
-        </text>
-      )}
 
-      {/* Tooltip */}
+        {/* Background circle */}
+        <circle
+          cx={0}
+          cy={0}
+          r={halfSize}
+          className={`fill-slate-700 stroke-slate-500 transition-all duration-200 ${
+            isSelected ? 'stroke-blue-400 stroke-2' : 'stroke-1 hover:stroke-slate-400'
+          }`}
+        />
+
+        {/* Clip path for logo */}
+        <defs>
+          <clipPath id={`clip-${entity.id}`}>
+            <circle cx={0} cy={0} r={halfSize - 4} />
+          </clipPath>
+        </defs>
+
+        {/* Logo or initials */}
+        {logoUrl && !imageError ? (
+          <image
+            href={logoUrl}
+            x={-halfSize + 4}
+            y={-halfSize + 4}
+            width={size - 8}
+            height={size - 8}
+            clipPath={`url(#clip-${entity.id})`}
+            preserveAspectRatio="xMidYMid slice"
+            onError={() => setImageError(true)}
+            className="pointer-events-none"
+          />
+        ) : (
+          <text
+            x={0}
+            y={0}
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="fill-slate-300 text-xs font-medium pointer-events-none select-none"
+            style={{ fontSize: '14px' }}
+          >
+            {entity.name.substring(0, 2).toUpperCase()}
+          </text>
+        )}
+      </g>
+
+      {/* Tooltip - outside animation group so it doesn't float */}
       {showTooltip && (
         <g transform={`translate(0, ${-halfSize - 12})`}>
           <rect

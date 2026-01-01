@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import type { Entity, DataProviderType } from '../../../../types/entity';
 import { ALL_DATA_PROVIDER_TYPES, DATA_PROVIDER_TYPE_CONFIG } from '../../../../types/entity';
 import { useLogoStore } from '../../../../store/logoStore';
@@ -32,36 +32,48 @@ export default function EcosystemView({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   // Fetch logos on mount
   useEffect(() => {
     fetchLogos();
   }, [fetchLogos]);
 
-  // Update dimensions on resize
+  // Update dimensions using ResizeObserver for reliable tracking
+  const updateDimensions = useCallback(() => {
+    if (containerRef.current) {
+      const { clientWidth, clientHeight } = containerRef.current;
+      if (clientWidth > 0 && clientHeight > 0) {
+        setDimensions((prev) => {
+          // Only update if dimensions actually changed
+          if (prev?.width === clientWidth && prev?.height === clientHeight) {
+            return prev;
+          }
+          return { width: clientWidth, height: clientHeight };
+        });
+      }
+    }
+  }, []);
+
   useEffect(() => {
-    const updateDimensions = () => {
-      const container = document.getElementById('ecosystem-container');
-      if (container) {
-        const { clientWidth, clientHeight } = container;
-        // Only update if we have valid dimensions
-        if (clientWidth > 0 && clientHeight > 0) {
-          setDimensions({
-            width: clientWidth,
-            height: clientHeight,
-          });
-        }
+    // Initial dimension calculation
+    updateDimensions();
+
+    // Set up ResizeObserver for container size changes
+    if (containerRef.current) {
+      resizeObserverRef.current = new ResizeObserver(() => {
+        updateDimensions();
+      });
+      resizeObserverRef.current.observe(containerRef.current);
+    }
+
+    return () => {
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
       }
     };
-
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(() => {
-      updateDimensions();
-    });
-
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
+  }, [updateDimensions]);
 
   // Find network operator (center entity)
   const networkOperator = useMemo(() => {
@@ -238,15 +250,18 @@ export default function EcosystemView({
 
   return (
     <div
-      id="ecosystem-container"
+      ref={containerRef}
       className="relative w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden"
       onClick={handleCloseContextMenu}
     >
       {/* CSS Animations */}
       <style>{`
-        @keyframes float {
+        @keyframes entity-float {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-4px); }
+          50% { transform: translateY(-3px); }
+        }
+        .entity-node-inner {
+          animation: entity-float 3s ease-in-out infinite;
         }
         @keyframes glow-pulse {
           0%, 100% { filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3)); }

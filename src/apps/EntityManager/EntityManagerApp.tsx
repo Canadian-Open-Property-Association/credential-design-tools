@@ -221,26 +221,33 @@ export default function EntityManagerApp() {
       )}
 
       {viewMode === 'ecosystem' && (
-        <div className="flex-1 overflow-hidden">
-          <EcosystemView
-            entities={entities}
-            onSelectEntity={(entityId) => {
-              selectEntity(entityId);
-              setViewMode('list');
-            }}
-            onNavigateToMap={(filter) => {
-              if (filter?.entityId) {
-                selectEntity(filter.entityId);
-              }
-              setViewMode('map');
-            }}
-            onNavigateToList={(filter) => {
-              if (filter?.entityId) {
-                selectEntity(filter.entityId);
-              }
-              setViewMode('list');
-            }}
-          />
+        <div className="flex-1 flex overflow-hidden p-4 gap-4">
+          {/* Left Panel - Entity List */}
+          <div className="w-80 flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+            <EntityList onAddEntity={handleAddEntity} />
+          </div>
+
+          {/* Right Panel - Ecosystem View */}
+          <div className="flex-1 bg-slate-900 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <EcosystemView
+              entities={entities}
+              onSelectEntity={(entityId) => {
+                selectEntity(entityId);
+              }}
+              onNavigateToMap={(filter) => {
+                if (filter?.entityId) {
+                  selectEntity(filter.entityId);
+                }
+                setViewMode('map');
+              }}
+              onNavigateToList={(filter) => {
+                if (filter?.entityId) {
+                  selectEntity(filter.entityId);
+                }
+                setViewMode('list');
+              }}
+            />
+          </div>
         </div>
       )}
 
