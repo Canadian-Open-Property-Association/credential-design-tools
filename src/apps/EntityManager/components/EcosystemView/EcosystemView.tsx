@@ -31,6 +31,7 @@ export default function EcosystemView({
   const { settings } = useFurnisherSettingsStore();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [expandedSegment, setExpandedSegment] = useState<DataProviderType | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
@@ -131,14 +132,13 @@ export default function EcosystemView({
     });
   };
 
-  // Handle segment click
+  // Handle segment click - toggle expansion
   const handleSegmentClick = (dataType: DataProviderType, event: React.MouseEvent) => {
     event.stopPropagation();
-    setContextMenu({
-      position: { x: event.clientX, y: event.clientY },
-      type: 'dataType',
-      dataType,
-    });
+    // Toggle expansion - if clicking the same segment, collapse it; otherwise expand new one
+    setExpandedSegment((prev) => (prev === dataType ? null : dataType));
+    // Clear context menu when expanding
+    setContextMenu(null);
   };
 
   // Handle center node click
@@ -154,10 +154,11 @@ export default function EcosystemView({
     }
   };
 
-  // Close context menu
+  // Close context menu and collapse expanded segment
   const handleCloseContextMenu = () => {
     setContextMenu(null);
     setSelectedEntityId(null);
+    setExpandedSegment(null);
   };
 
   // Build context menu options
@@ -294,9 +295,15 @@ export default function EcosystemView({
       {/* Legend */}
       <div className="absolute bottom-4 left-4 text-slate-500 text-xs">
         <div className="flex items-center gap-3">
-          <span>Click entity or segment for options</span>
+          <span>Click segment to expand</span>
           <span className="text-slate-600">|</span>
-          <span>Entities appear in multiple segments if they cover multiple data types</span>
+          <span>Click entity for options</span>
+          {expandedSegment && (
+            <>
+              <span className="text-slate-600">|</span>
+              <span className="text-blue-400">Click background to collapse</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -324,11 +331,19 @@ export default function EcosystemView({
               onEntityClick={handleEntityClick}
               onSegmentClick={handleSegmentClick}
               selectedEntityId={selectedEntityId}
+              isExpanded={expandedSegment === type}
+              isFaded={expandedSegment !== null && expandedSegment !== type}
             />
           ))}
 
-          {/* Center node (network operator) */}
-          <g transform={`translate(${centerX}, ${centerY})`}>
+          {/* Center node (network operator) - fade when segment is expanded */}
+          <g
+            transform={`translate(${centerX}, ${centerY})`}
+            style={{
+              opacity: expandedSegment ? 0.3 : 1,
+              transition: 'opacity 0.3s ease-in-out',
+            }}
+          >
             <CenterNode
               entity={networkOperator}
               logoUrl={networkOperator ? getEntityLogoUrl(networkOperator) : null}

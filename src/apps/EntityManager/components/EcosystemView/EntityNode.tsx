@@ -9,6 +9,7 @@ interface EntityNodeProps {
   onClick: (event: React.MouseEvent) => void;
   isSelected?: boolean;
   animationDelay?: number;
+  size?: number;
 }
 
 export default function EntityNode({
@@ -19,11 +20,11 @@ export default function EntityNode({
   onClick,
   isSelected = false,
   animationDelay = 0,
+  size = 48,
 }: EntityNodeProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  const size = 48;
   const halfSize = size / 2;
 
   return (
