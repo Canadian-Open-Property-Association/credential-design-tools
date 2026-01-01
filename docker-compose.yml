@@ -10,6 +10,20 @@ services:
       - vct-assets:/app/assets
     environment:
       - NODE_ENV=development
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: copa
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: copa_forms
+    ports:
+      - "5432:5432"
+    volumes:
+      - copa_postgres_data:/var/lib/postgresql/data
 
 volumes:
   vct-assets:
+  copa_postgres_data:

@@ -1,0 +1,25 @@
+/**
+ * Forms Builder App
+ *
+ * Main app component for the Forms Builder.
+ * Handles internal routing between forms list, form editor, etc.
+ */
+
+import { Routes, Route } from 'react-router-dom';
+import { useAppTracking } from '../../hooks/useAppTracking';
+import FormsList from './components/FormsList';
+import FormBuilder from './components/FormBuilder';
+
+export default function FormsBuilderApp() {
+  useAppTracking('forms-builder', 'Forms Builder');
+
+  return (
+    <div className="h-full flex flex-col bg-gray-50">
+      <Routes>
+        <Route path="/" element={<FormsList />} />
+        <Route path="/new" element={<FormBuilder />} />
+        <Route path="/edit/:id" element={<FormBuilder />} />
+      </Routes>
+    </div>
+  );
+}

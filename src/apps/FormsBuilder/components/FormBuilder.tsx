@@ -1,0 +1,660 @@
+/**
+ * FormBuilder Component
+ *
+ * Form editor for creating and editing forms.
+ * Supports adding sections, fields, and configuring form settings.
+ */
+
+import { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useFormsStore } from '../../../store/formsStore';
+import {
+  FormField,
+  FormFieldType,
+  FIELD_TYPE_LABELS,
+  createEmptyField,
+  createEmptySection,
+} from '../../../types/forms';
+import FormPreview from './FormPreview';
+
+export default function FormBuilder() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const {
+    currentForm,
+    isLoading,
+    error,
+    fetchForm,
+    updateForm,
+    clearCurrentForm,
+    updateCurrentFormSchema,
+    updateCurrentFormTitle,
+  } = useFormsStore();
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Fetch form on mount
+  useEffect(() => {
+    if (id) {
+      fetchForm(id);
+    }
+    return () => {
+      clearCurrentForm();
+    };
+  }, [id, fetchForm, clearCurrentForm]);
+
+  // Auto-select first section
+  useEffect(() => {
+    if (currentForm?.schema.sections.length && !selectedSectionId) {
+      setSelectedSectionId(currentForm.schema.sections[0].id);
+    }
+  }, [currentForm, selectedSectionId]);
+
+  // Save form
+  const handleSave = useCallback(async () => {
+    if (!currentForm || !id) return;
+
+    setIsSaving(true);
+    try {
+      await updateForm(id, {
+        title: currentForm.title,
+        description: currentForm.description,
+        schema: currentForm.schema,
+      });
+      setHasUnsavedChanges(false);
+    } catch (err) {
+      // Error is handled in store
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentForm, id, updateForm]);
+
+  // Add a new section
+  const handleAddSection = () => {
+    if (!currentForm) return;
+    const newSection = createEmptySection();
+    const newSchema = {
+      ...currentForm.schema,
+      sections: [...currentForm.schema.sections, newSection],
+    };
+    updateCurrentFormSchema(newSchema);
+    setSelectedSectionId(newSection.id);
+    setHasUnsavedChanges(true);
+  };
+
+  // Delete a section
+  const handleDeleteSection = (sectionId: string) => {
+    if (!currentForm) return;
+    if (currentForm.schema.sections.length <= 1) {
+      alert('Cannot delete the last section');
+      return;
+    }
+    const newSchema = {
+      ...currentForm.schema,
+      sections: currentForm.schema.sections.filter((s) => s.id !== sectionId),
+    };
+    updateCurrentFormSchema(newSchema);
+    if (selectedSectionId === sectionId) {
+      setSelectedSectionId(newSchema.sections[0]?.id || null);
+    }
+    setHasUnsavedChanges(true);
+  };
+
+  // Update section title
+  const handleUpdateSectionTitle = (sectionId: string, title: string) => {
+    if (!currentForm) return;
+    const newSchema = {
+      ...currentForm.schema,
+      sections: currentForm.schema.sections.map((s) =>
+        s.id === sectionId ? { ...s, title } : s
+      ),
+    };
+    updateCurrentFormSchema(newSchema);
+    setHasUnsavedChanges(true);
+  };
+
+  // Add a field to the selected section
+  const handleAddField = (type: FormFieldType) => {
+    if (!currentForm || !selectedSectionId) return;
+    const newField = createEmptyField(type);
+    const newSchema = {
+      ...currentForm.schema,
+      sections: currentForm.schema.sections.map((s) =>
+        s.id === selectedSectionId
+          ? { ...s, fields: [...s.fields, newField] }
+          : s
+      ),
+    };
+    updateCurrentFormSchema(newSchema);
+    setSelectedFieldId(newField.id);
+    setHasUnsavedChanges(true);
+  };
+
+  // Update a field
+  const handleUpdateField = (sectionId: string, fieldId: string, updates: Partial<FormField>) => {
+    if (!currentForm) return;
+    const newSchema = {
+      ...currentForm.schema,
+      sections: currentForm.schema.sections.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              fields: s.fields.map((f) =>
+                f.id === fieldId ? { ...f, ...updates } : f
+              ),
+            }
+          : s
+      ),
+    };
+    updateCurrentFormSchema(newSchema);
+    setHasUnsavedChanges(true);
+  };
+
+  // Delete a field
+  const handleDeleteField = (sectionId: string, fieldId: string) => {
+    if (!currentForm) return;
+    const newSchema = {
+      ...currentForm.schema,
+      sections: currentForm.schema.sections.map((s) =>
+        s.id === sectionId
+          ? { ...s, fields: s.fields.filter((f) => f.id !== fieldId) }
+          : s
+      ),
+    };
+    updateCurrentFormSchema(newSchema);
+    if (selectedFieldId === fieldId) {
+      setSelectedFieldId(null);
+    }
+    setHasUnsavedChanges(true);
+  };
+
+  // Get selected section
+  const selectedSection = currentForm?.schema.sections.find(
+    (s) => s.id === selectedSectionId
+  );
+
+  // Get selected field
+  const selectedField = selectedSection?.fields.find(
+    (f) => f.id === selectedFieldId
+  );
+
+  if (isLoading && !currentForm) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentForm) {
+    return (
+      <div className="p-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
+          Form not found
+        </div>
+      </div>
+    );
+  }
+
+  // Cannot edit published forms
+  if (currentForm.status === 'published') {
+    return (
+      <div className="p-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="font-semibold text-blue-800 mb-2">Form is Published</h3>
+          <p className="text-blue-700 text-sm">
+            Published forms cannot be edited. Clone this form to create a new draft for editing.
+          </p>
+          <button
+            onClick={() => navigate('/apps/forms-builder')}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Back to Forms
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="border-b bg-white px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/apps/forms-builder')}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Back to forms"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
+          <div>
+            <input
+              type="text"
+              value={currentForm.title}
+              onChange={(e) => {
+                updateCurrentFormTitle(e.target.value);
+                setHasUnsavedChanges(true);
+              }}
+              className="text-lg font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 -ml-1"
+              placeholder="Form Title"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {hasUnsavedChanges && (
+            <span className="text-sm text-amber-600">Unsaved changes</span>
+          )}
+          <button
+            onClick={() => setShowPreview(true)}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Preview
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving || !hasUnsavedChanges}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSaving && (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            )}
+            Save
+          </button>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sections sidebar */}
+        <div className="w-64 border-r bg-gray-50 flex flex-col">
+          <div className="p-4 border-b bg-white">
+            <h3 className="font-semibold text-gray-700 mb-2">Sections</h3>
+            <button
+              onClick={handleAddSection}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Section
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            {currentForm.schema.sections.map((section, index) => (
+              <div
+                key={section.id}
+                onClick={() => {
+                  setSelectedSectionId(section.id);
+                  setSelectedFieldId(null);
+                }}
+                className={`p-3 rounded-lg cursor-pointer mb-2 ${
+                  selectedSectionId === section.id
+                    ? 'bg-blue-100 border border-blue-300'
+                    : 'bg-white border border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 truncate">
+                    {section.title || `Section ${index + 1}`}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSection(section.id);
+                    }}
+                    className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {section.fields.length} field{section.fields.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Fields area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {selectedSection && (
+            <>
+              {/* Section header */}
+              <div className="p-4 border-b bg-white">
+                <input
+                  type="text"
+                  value={selectedSection.title}
+                  onChange={(e) => handleUpdateSectionTitle(selectedSection.id, e.target.value)}
+                  className="text-lg font-semibold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 -ml-1 w-full"
+                  placeholder="Section Title"
+                />
+              </div>
+
+              {/* Fields list */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {selectedSection.fields.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="mb-4">No fields in this section</p>
+                    <p className="text-sm">Add fields using the toolbar below</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedSection.fields.map((field) => (
+                      <div
+                        key={field.id}
+                        onClick={() => setSelectedFieldId(field.id)}
+                        className={`p-4 rounded-lg border cursor-pointer ${
+                          selectedFieldId === field.id
+                            ? 'bg-blue-50 border-blue-300'
+                            : 'bg-white border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                {FIELD_TYPE_LABELS[field.type]}
+                              </span>
+                              {field.required && (
+                                <span className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded">
+                                  Required
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="font-medium text-gray-900">
+                              {field.label || 'Untitled Field'}
+                            </h4>
+                            {field.name && (
+                              <p className="text-xs text-gray-400 font-mono mt-1">
+                                {field.name}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteField(selectedSection.id, field.id);
+                            }}
+                            className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Add field toolbar */}
+              <div className="p-4 border-t bg-white">
+                <p className="text-sm text-gray-500 mb-2">Add Field</p>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.entries(FIELD_TYPE_LABELS) as [FormFieldType, string][]).map(
+                    ([type, label]) => (
+                      <button
+                        key={type}
+                        onClick={() => handleAddField(type)}
+                        className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        {label}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Field editor sidebar */}
+        {selectedField && (
+          <div className="w-80 border-l bg-white overflow-y-auto">
+            <div className="p-4 border-b">
+              <h3 className="font-semibold text-gray-700">Field Settings</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Label */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Label
+                </label>
+                <input
+                  type="text"
+                  value={selectedField.label}
+                  onChange={(e) =>
+                    handleUpdateField(selectedSectionId!, selectedField.id, {
+                      label: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Field Label"
+                />
+              </div>
+
+              {/* Name (JSON key) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Field Name (JSON key)
+                </label>
+                <input
+                  type="text"
+                  value={selectedField.name}
+                  onChange={(e) =>
+                    handleUpdateField(selectedSectionId!, selectedField.id, {
+                      name: e.target.value.replace(/\s/g, '_').toLowerCase(),
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                  placeholder="field_name"
+                />
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Type
+                </label>
+                <select
+                  value={selectedField.type}
+                  onChange={(e) =>
+                    handleUpdateField(selectedSectionId!, selectedField.id, {
+                      type: e.target.value as FormFieldType,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {(Object.entries(FIELD_TYPE_LABELS) as [FormFieldType, string][]).map(
+                    ([type, label]) => (
+                      <option key={type} value={type}>
+                        {label}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+
+              {/* Placeholder */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Placeholder
+                </label>
+                <input
+                  type="text"
+                  value={selectedField.placeholder || ''}
+                  onChange={(e) =>
+                    handleUpdateField(selectedSectionId!, selectedField.id, {
+                      placeholder: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Placeholder text..."
+                />
+              </div>
+
+              {/* Required */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="required"
+                  checked={selectedField.required}
+                  onChange={(e) =>
+                    handleUpdateField(selectedSectionId!, selectedField.id, {
+                      required: e.target.checked,
+                    })
+                  }
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="required" className="text-sm text-gray-700">
+                  Required field
+                </label>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={selectedField.description || ''}
+                  onChange={(e) =>
+                    handleUpdateField(selectedSectionId!, selectedField.id, {
+                      description: e.target.value,
+                    })
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  placeholder="Help text for this field..."
+                />
+              </div>
+
+              {/* Options (for select, radio, checkbox) */}
+              {['select', 'radio', 'checkbox'].includes(selectedField.type) && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Options
+                    </label>
+                    <button
+                      onClick={() => {
+                        const currentOptions = selectedField.options || [];
+                        handleUpdateField(selectedSectionId!, selectedField.id, {
+                          options: [
+                            ...currentOptions,
+                            { label: '', value: '' },
+                          ],
+                        });
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      + Add Option
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {(selectedField.options || []).map((option, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={option.label}
+                          onChange={(e) => {
+                            const newOptions = [...(selectedField.options || [])];
+                            newOptions[index] = {
+                              ...newOptions[index],
+                              label: e.target.value,
+                              // Auto-generate value from label if value is empty
+                              value: newOptions[index].value || e.target.value.toLowerCase().replace(/\s+/g, '_'),
+                            };
+                            handleUpdateField(selectedSectionId!, selectedField.id, {
+                              options: newOptions,
+                            });
+                          }}
+                          className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Label"
+                        />
+                        <input
+                          type="text"
+                          value={option.value}
+                          onChange={(e) => {
+                            const newOptions = [...(selectedField.options || [])];
+                            newOptions[index] = {
+                              ...newOptions[index],
+                              value: e.target.value,
+                            };
+                            handleUpdateField(selectedSectionId!, selectedField.id, {
+                              options: newOptions,
+                            });
+                          }}
+                          className="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                          placeholder="value"
+                        />
+                        <button
+                          onClick={() => {
+                            const newOptions = (selectedField.options || []).filter(
+                              (_, i) => i !== index
+                            );
+                            handleUpdateField(selectedSectionId!, selectedField.id, {
+                              options: newOptions,
+                            });
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    {(!selectedField.options || selectedField.options.length === 0) && (
+                      <p className="text-sm text-gray-400 text-center py-2">
+                        No options defined
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Preview Modal */}
+      {showPreview && currentForm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white w-full h-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            <FormPreview
+              schema={currentForm.schema}
+              title={currentForm.title}
+              description={currentForm.description}
+              onClose={() => setShowPreview(false)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

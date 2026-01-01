@@ -15,6 +15,8 @@ import openapiRouter from './routes/openapi.js';
 import { initAccessLogger, logAccess, queryLogs, queryAnalytics } from './accessLogger.js';
 import { requireAdmin, isAdmin } from './adminMiddleware.js';
 import { specs, swaggerUi } from './swagger.js';
+import formsRouter from './routes/forms.js';
+import { initializeDatabase } from './db/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -153,6 +155,7 @@ app.use('/api/dictionary', catalogueRouter);
 app.use('/api/entities', entitiesRouter);
 app.use('/api/harmonization', harmonizationRouter);
 app.use('/api/openapi', openapiRouter);
+app.use('/api/forms', formsRouter);
 
 // Swagger API documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs, {
@@ -1312,8 +1315,11 @@ if (isProduction) {
   });
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`VCT Builder server running on port ${PORT}`);
   console.log(`Environment: ${isProduction ? 'production' : 'development'}`);
   console.log(`Assets directory: ${ASSETS_DIR}`);
+
+  // Initialize Forms Builder database (if DATABASE_URL is configured)
+  await initializeDatabase();
 });
