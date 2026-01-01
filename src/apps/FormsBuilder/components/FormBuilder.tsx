@@ -210,22 +210,255 @@ export default function FormBuilder() {
     );
   }
 
-  // Cannot edit published forms
+  // Published forms - show read-only view
   if (currentForm.status === 'published') {
+    const publicUrl = `${window.location.origin}/f/${currentForm.slug}`;
+
     return (
-      <div className="p-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="font-semibold text-blue-800 mb-2">Form is Published</h3>
-          <p className="text-blue-700 text-sm">
-            Published forms cannot be edited. Clone this form to create a new draft for editing.
-          </p>
-          <button
-            onClick={() => navigate('/apps/forms-builder')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Back to Forms
-          </button>
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="border-b bg-white px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/apps/forms-builder')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Back to forms"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-semibold text-gray-900">{currentForm.title}</h1>
+                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                  Published
+                </span>
+              </div>
+              {currentForm.description && (
+                <p className="text-sm text-gray-500">{currentForm.description}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowPreview(true)}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Preview
+            </button>
+          </div>
         </div>
+
+        {/* Public URL Banner */}
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-blue-800">Public Form URL</p>
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 hover:underline font-mono text-sm"
+                >
+                  {publicUrl}
+                </a>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(publicUrl);
+                // Could add a toast notification here
+              }}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              Copy URL
+            </button>
+          </div>
+        </div>
+
+        {/* Read-only info banner */}
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
+          <p className="text-sm text-amber-800 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            This form is published and cannot be edited. Clone it to create a new draft for editing.
+          </p>
+        </div>
+
+        {/* Main content - read-only view */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Sections sidebar */}
+          <div className="w-64 border-r bg-gray-50 flex flex-col">
+            <div className="p-4 border-b bg-white">
+              <h3 className="font-semibold text-gray-700">Sections</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {currentForm.schema.sections.map((section, index) => (
+                <div
+                  key={section.id}
+                  onClick={() => {
+                    setSelectedSectionId(section.id);
+                    setSelectedFieldId(null);
+                  }}
+                  className={`p-3 rounded-lg cursor-pointer mb-2 ${
+                    selectedSectionId === section.id
+                      ? 'bg-blue-100 border border-blue-300'
+                      : 'bg-white border border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-sm font-medium text-gray-700 truncate block">
+                    {section.title || `Section ${index + 1}`}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    {section.fields.length} field{section.fields.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Fields area - read-only */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {selectedSection && (
+              <>
+                {/* Section header */}
+                <div className="p-4 border-b bg-white">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {selectedSection.title || 'Untitled Section'}
+                  </h2>
+                  {selectedSection.description && (
+                    <p className="text-sm text-gray-500 mt-1">{selectedSection.description}</p>
+                  )}
+                </div>
+
+                {/* Fields list */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  {selectedSection.fields.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No fields in this section</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {selectedSection.fields.map((field) => (
+                        <div
+                          key={field.id}
+                          onClick={() => setSelectedFieldId(field.id)}
+                          className={`p-4 rounded-lg border cursor-pointer ${
+                            selectedFieldId === field.id
+                              ? 'bg-blue-50 border-blue-300'
+                              : 'bg-white border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                  {FIELD_TYPE_LABELS[field.type]}
+                                </span>
+                                {field.required && (
+                                  <span className="text-xs px-2 py-0.5 bg-red-100 text-red-600 rounded">
+                                    Required
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="font-medium text-gray-900">
+                                {field.label || 'Untitled Field'}
+                              </h4>
+                              {field.name && (
+                                <p className="text-xs text-gray-400 font-mono mt-1">
+                                  {field.name}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Field details sidebar - read-only */}
+          {selectedField && (
+            <div className="w-80 border-l bg-white overflow-y-auto">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold text-gray-700">Field Details</h3>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Label</label>
+                  <p className="text-gray-900">{selectedField.label || 'Untitled Field'}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Field Name</label>
+                  <p className="text-gray-900 font-mono text-sm">{selectedField.name}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                  <p className="text-gray-900">{FIELD_TYPE_LABELS[selectedField.type]}</p>
+                </div>
+                {selectedField.placeholder && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Placeholder</label>
+                    <p className="text-gray-900">{selectedField.placeholder}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Required</label>
+                  <p className="text-gray-900">{selectedField.required ? 'Yes' : 'No'}</p>
+                </div>
+                {selectedField.description && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
+                    <p className="text-gray-900 text-sm">{selectedField.description}</p>
+                  </div>
+                )}
+                {selectedField.options && selectedField.options.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Options</label>
+                    <ul className="space-y-1">
+                      {selectedField.options.map((option, idx) => (
+                        <li key={idx} className="text-sm text-gray-900 flex items-center gap-2">
+                          <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                          {option.label} <span className="text-gray-400 font-mono text-xs">({option.value})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Preview Modal */}
+        {showPreview && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+            <div className="bg-white w-full h-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl overflow-hidden flex flex-col">
+              <FormPreview
+                schema={currentForm.schema}
+                title={currentForm.title}
+                description={currentForm.description}
+                onClose={() => setShowPreview(false)}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
