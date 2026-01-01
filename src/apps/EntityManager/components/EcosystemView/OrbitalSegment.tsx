@@ -100,83 +100,101 @@ export default function OrbitalSegment({
   const effectiveOuterRadius = outerRadius * expandedScale;
   const effectiveInnerRadius = isExpanded ? innerRadius * 0.8 : innerRadius;
 
-  // Position entities along the segment arc with dynamic sizing to prevent overlap
-  const entityRadius = (effectiveInnerRadius + effectiveOuterRadius) / 2;
+  // Position entities throughout the segment area with dynamic sizing
   const arcThickness = effectiveOuterRadius - effectiveInnerRadius;
 
-  // Calculate available arc length for entities
+  // Calculate available arc length at mid-radius
   const angleRange = endAngle - startAngle - 10; // Leave some padding
-  const arcLength = (angleRange * Math.PI / 180) * entityRadius;
+  const midRadius = (effectiveInnerRadius + effectiveOuterRadius) / 2;
+  const arcLength = (angleRange * Math.PI / 180) * midRadius;
 
   // Calculate entity size based on available space
-  const baseSize = isExpanded ? 56 : 48;
+  const baseSize = isExpanded ? 56 : 44;
   const minSize = 24; // Minimum entity size
-  const padding = 8; // Minimum space between entities
+  const padding = 12; // Minimum space between entities
 
-  // For non-expanded: fit entities in a single row along the arc
-  // For expanded: allow multiple rows
+  // Calculate optimal entity size to fit all entities in the segment area
   let entitySize = baseSize;
-  let numRows = 1;
 
   if (entities.length > 0) {
-    if (isExpanded) {
-      // When expanded, calculate how many entities can fit per row at base size
-      const maxPerRowAtBase = Math.max(1, Math.floor(arcLength / (baseSize + padding)));
-      numRows = Math.ceil(entities.length / maxPerRowAtBase);
-      // Make sure rows fit within the arc thickness
-      const maxRows = Math.floor((arcThickness - 20) / (baseSize + padding));
-      if (numRows > maxRows) {
-        numRows = Math.max(1, maxRows);
-        const entitiesPerRow = Math.ceil(entities.length / numRows);
-        // Shrink size to fit more entities per row if needed
-        entitySize = Math.max(minSize, Math.min(baseSize, (arcLength - padding) / entitiesPerRow - padding));
-      }
-    } else {
-      // Non-expanded: fit all entities in single row, shrink if needed
-      const requiredSpace = entities.length * (baseSize + padding);
-      if (requiredSpace > arcLength) {
-        entitySize = Math.max(minSize, (arcLength - padding) / entities.length - padding);
-      }
-    }
+    // Calculate how many can fit in a grid pattern within the segment
+    const availableArea = arcLength * arcThickness * 0.6; // Use 60% of theoretical area
+    const areaPerEntity = availableArea / entities.length;
+    const sizeFromArea = Math.sqrt(areaPerEntity) - padding;
+    entitySize = Math.max(minSize, Math.min(baseSize, sizeFromArea));
   }
 
+  // Generate positions distributed throughout the segment
   const entityPositions = entities.map((entity, i) => {
+    // Use a pseudo-random but deterministic distribution based on entity index
+    // This creates a scattered look while being reproducible
+    const seed = i * 7 + entities.length * 3;
+
+    // Distribute entities at varying radii and angles
     let angle: number;
     let radius: number;
 
-    if (isExpanded && entities.length > 1 && numRows > 1) {
-      // When expanded with multiple rows, spread entities across rows
-      const entitiesPerRow = Math.ceil(entities.length / numRows);
-      const row = Math.floor(i / entitiesPerRow);
-      const posInRow = i % entitiesPerRow;
-      const entitiesInThisRow = Math.min(entitiesPerRow, entities.length - row * entitiesPerRow);
-
-      // Calculate row radius (spread from inner to outer)
-      const rowSpacing = (arcThickness - entitySize - 10) / Math.max(numRows - 1, 1);
-      radius = effectiveInnerRadius + entitySize / 2 + 5 + row * rowSpacing;
-
-      // Calculate angle position within row
-      const rowAngleStep = entitiesInThisRow > 1 ? angleRange / (entitiesInThisRow - 1) : 0;
-      angle = startAngle + 5 + (entitiesInThisRow === 1 ? angleRange / 2 : posInRow * rowAngleStep);
+    if (entities.length === 1) {
+      // Single entity: center of segment
+      angle = (startAngle + endAngle) / 2;
+      radius = midRadius;
+    } else if (entities.length <= 3) {
+      // 2-3 entities: spread along the arc at mid-radius
+      const angleStep = angleRange / (entities.length + 1);
+      angle = startAngle + 5 + angleStep * (i + 1);
+      radius = midRadius + ((seed % 3) - 1) * (arcThickness * 0.15);
     } else {
-      // Single row positioning
-      radius = entityRadius;
-      const angleStep = entities.length > 1 ? angleRange / (entities.length - 1) : 0;
-      angle = startAngle + 5 + (entities.length === 1 ? angleRange / 2 : i * angleStep);
+      // Multiple entities: distribute in a grid-like pattern throughout segment
+      // Create multiple "lanes" at different radii
+      const numLanes = Math.min(3, Math.ceil(Math.sqrt(entities.length)));
+      const lane = i % numLanes;
+      const posInLane = Math.floor(i / numLanes);
+      const entitiesInLane = Math.ceil(entities.length / numLanes);
+
+      // Calculate radius for this lane (inner to outer)
+      const laneSpacing = (arcThickness - entitySize - 10) / Math.max(numLanes, 1);
+      radius = effectiveInnerRadius + entitySize / 2 + 8 + lane * laneSpacing;
+
+      // Add some variation to radius
+      radius += ((seed % 5) - 2) * 8;
+      radius = Math.max(effectiveInnerRadius + entitySize / 2 + 5, Math.min(effectiveOuterRadius - entitySize / 2 - 5, radius));
+
+      // Calculate angle for position in lane
+      const laneAngleStep = entitiesInLane > 1 ? angleRange / (entitiesInLane + 1) : angleRange / 2;
+      angle = startAngle + 5 + laneAngleStep * (posInLane + 1);
+
+      // Add slight angle variation to avoid perfect grid
+      angle += ((seed % 7) - 3) * 1.5;
+      angle = Math.max(startAngle + 5, Math.min(endAngle - 5, angle));
     }
 
     const pos = polarToCartesian(centerX, centerY, radius, angle);
     return { entity, ...pos, angle, size: entitySize };
   });
 
-  // Label position (middle of the segment, outside the arc)
+  // Label position (middle of the segment, outside the arc) - constrained to viewport
   const labelAngle = (startAngle + endAngle) / 2;
-  const labelPos = polarToCartesian(centerX, centerY, effectiveOuterRadius + (isExpanded ? 40 : 30), labelAngle);
+  const labelDistance = effectiveOuterRadius + (isExpanded ? 40 : 30);
+  let labelPos = polarToCartesian(centerX, centerY, labelDistance, labelAngle);
+
+  // Constrain label position to stay within viewport with padding
+  const labelPadding = 80; // Space for the label text
+  labelPos = {
+    x: Math.max(labelPadding, Math.min(viewportWidth - labelPadding, labelPos.x)),
+    y: Math.max(30, Math.min(viewportHeight - 50, labelPos.y)),
+  };
 
   // Calculate label rotation so text is readable
   let labelRotation = labelAngle - 90;
   if (labelRotation > 90) labelRotation -= 180;
   if (labelRotation < -90) labelRotation += 180;
+
+  // For labels that would be outside bounds, use horizontal orientation
+  const originalLabelPos = polarToCartesian(centerX, centerY, labelDistance, labelAngle);
+  const wasConstrained = Math.abs(originalLabelPos.x - labelPos.x) > 10 || Math.abs(originalLabelPos.y - labelPos.y) > 10;
+  if (wasConstrained) {
+    labelRotation = 0; // Horizontal text when constrained
+  }
 
   const arcPath = describeArc(centerX, centerY, effectiveInnerRadius, effectiveOuterRadius, startAngle, endAngle);
 

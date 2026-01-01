@@ -246,6 +246,7 @@ export default function EntityManagerApp() {
                 }
                 setViewMode('list');
               }}
+              externalSelectedEntityId={selectedEntity?.id ?? null}
             />
           </div>
         </div>

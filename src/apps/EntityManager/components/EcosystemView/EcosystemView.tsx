@@ -12,6 +12,7 @@ interface EcosystemViewProps {
   onSelectEntity: (entityId: string) => void;
   onNavigateToMap: (filter?: { entityId?: string; dataType?: string }) => void;
   onNavigateToList: (filter?: { entityId?: string; dataType?: string }) => void;
+  externalSelectedEntityId?: string | null;
 }
 
 interface ContextMenuState {
@@ -26,15 +27,19 @@ export default function EcosystemView({
   onSelectEntity,
   onNavigateToMap,
   onNavigateToList,
+  externalSelectedEntityId,
 }: EcosystemViewProps) {
   const { fetchLogos, getLogoUrl } = useLogoStore();
   const { settings } = useFurnisherSettingsStore();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
   const [expandedSegment, setExpandedSegment] = useState<DataProviderType | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  // Use external selection if provided, otherwise use internal
+  const selectedEntityId = externalSelectedEntityId ?? internalSelectedId;
 
   // Fetch logos on mount
   useEffect(() => {
@@ -124,7 +129,7 @@ export default function EcosystemView({
   // Handle entity click
   const handleEntityClick = (entity: Entity, event: React.MouseEvent) => {
     event.stopPropagation();
-    setSelectedEntityId(entity.id);
+    setInternalSelectedId(entity.id);
     setContextMenu({
       position: { x: event.clientX, y: event.clientY },
       type: 'entity',
@@ -145,7 +150,7 @@ export default function EcosystemView({
   const handleCenterClick = (event: React.MouseEvent) => {
     if (networkOperator) {
       event.stopPropagation();
-      setSelectedEntityId(networkOperator.id);
+      setInternalSelectedId(networkOperator.id);
       setContextMenu({
         position: { x: event.clientX, y: event.clientY },
         type: 'entity',
@@ -157,7 +162,7 @@ export default function EcosystemView({
   // Close context menu and collapse expanded segment
   const handleCloseContextMenu = () => {
     setContextMenu(null);
-    setSelectedEntityId(null);
+    setInternalSelectedId(null);
     setExpandedSegment(null);
   };
 
@@ -242,12 +247,16 @@ export default function EcosystemView({
   const innerRadius = minDimension * 0.18;
   const outerRadius = minDimension * 0.42;
 
-  // Stats
-  const totalFurnishers = dataFurnishers.length;
-  const totalFields = dataFurnishers.reduce((acc, e) => {
+  // Stats - filter by expanded segment if one is selected
+  const displayedEntities = expandedSegment
+    ? groupedByType[expandedSegment]
+    : dataFurnishers;
+  const displayedFurnishers = displayedEntities.length;
+  const displayedFields = displayedEntities.reduce((acc, e) => {
     const sources = e.dataSchema?.sources || [];
     return acc + sources.reduce((sum, s) => sum + (s.fields?.length || 0), 0);
   }, 0);
+  const displayedDataTypes = expandedSegment ? 1 : ALL_DATA_PROVIDER_TYPES.length;
 
   return (
     <div
@@ -276,18 +285,23 @@ export default function EcosystemView({
 
       {/* Stats overlay */}
       <div className="absolute top-4 left-4 text-slate-400 text-sm">
+        {expandedSegment && (
+          <div className="mb-2 text-slate-300 font-medium">
+            {getDataTypeLabel(expandedSegment)}
+          </div>
+        )}
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-            {totalFurnishers} Data Furnisher{totalFurnishers !== 1 ? 's' : ''}
+            {displayedFurnishers} Data Furnisher{displayedFurnishers !== 1 ? 's' : ''}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-            {ALL_DATA_PROVIDER_TYPES.length} Data Types
+            {displayedDataTypes} Data Type{displayedDataTypes !== 1 ? 's' : ''}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-green-500"></span>
-            {totalFields} Fields
+            {displayedFields} Field{displayedFields !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
@@ -327,6 +341,8 @@ export default function EcosystemView({
               centerY={centerY}
               innerRadius={innerRadius}
               outerRadius={outerRadius}
+              viewportWidth={dimensions.width}
+              viewportHeight={dimensions.height}
               getLogoUrl={getEntityLogoUrl}
               onEntityClick={handleEntityClick}
               onSegmentClick={handleSegmentClick}
