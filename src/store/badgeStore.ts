@@ -45,7 +45,9 @@ interface BadgeStore {
     value: BadgeDefinition[K]
   ) => void;
   saveCurrentBadge: () => Promise<BadgeDefinition>;
+  saveBadge: () => Promise<BadgeDefinition>;
   discardChanges: () => void;
+  closeEditor: () => void;
 
   // Eligibility rules
   addEligibilityRule: () => void;
@@ -293,6 +295,16 @@ export const useBadgeStore = create<BadgeStore>()(
         } else {
           set({ currentBadge: null, isDirty: false });
         }
+      },
+
+      // Close the editor (go back to welcome screen)
+      closeEditor: () => {
+        set({ currentBadge: null, selectedBadgeId: null, isDirty: false });
+      },
+
+      // Alias for saveCurrentBadge (used by toolbar)
+      saveBadge: async () => {
+        return get().saveCurrentBadge();
       },
 
       // Add a new eligibility rule
