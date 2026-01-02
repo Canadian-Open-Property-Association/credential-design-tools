@@ -18,6 +18,7 @@ import { specs, swaggerUi } from './swagger.js';
 import formsRouter from './routes/forms.js';
 import submissionsRouter from './routes/submissions.js';
 import formsBuilderSettingsRouter from './routes/formsBuilderSettings.js';
+import badgesRouter from './routes/badges.js';
 import { initializeDatabase } from './db/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -160,6 +161,7 @@ app.use('/api/openapi', openapiRouter);
 app.use('/api/forms', formsRouter);
 app.use('/api', submissionsRouter);
 app.use('/api/forms-builder/settings', formsBuilderSettingsRouter);
+app.use('/api/badges', badgesRouter);
 
 // Swagger API documentation
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(specs, {

@@ -1581,4 +1581,124 @@ router.get('/badge/:filename', requireAuth, async (req, res) => {
   }
 });
 
+// Create a new Badge definition file (creates branch + PR)
+router.post('/badge', requireAuth, async (req, res) => {
+  try {
+    const { badgeId, content, title, description } = req.body;
+
+    if (!badgeId || !content) {
+      return res.status(400).json({ error: 'badgeId and content are required' });
+    }
+
+    // Ensure filename ends with .json
+    const finalFilename = `${badgeId}.json`;
+
+    const octokit = getOctokit(req);
+    const user = req.session.user;
+
+    // Determine the base branch for the PR
+    let baseBranch = GITHUB_BASE_BRANCH;
+    if (!baseBranch) {
+      // Fall back to repo's default branch if not configured
+      const { data: repo } = await octokit.rest.repos.get({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+      });
+      baseBranch = repo.default_branch;
+    }
+
+    // Get the latest commit SHA of the base branch
+    const { data: ref } = await octokit.rest.git.getRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `heads/${baseBranch}`,
+    });
+    const baseSha = ref.object.sha;
+
+    // Create a new branch
+    const timestamp = Date.now();
+    const branchName = `badge/add-${badgeId}-${timestamp}`;
+
+    await octokit.rest.git.createRef({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      ref: `refs/heads/${branchName}`,
+      sha: baseSha,
+    });
+
+    // Check if file already exists
+    const filePath = `${BADGE_FOLDER_PATH}/${finalFilename}`;
+    let existingSha = null;
+    try {
+      const { data: existingFile } = await octokit.rest.repos.getContent({
+        owner: GITHUB_REPO_OWNER,
+        repo: GITHUB_REPO_NAME,
+        path: filePath,
+        ref: baseBranch,
+      });
+      existingSha = existingFile.sha;
+    } catch (error) {
+      if (error.status !== 404) {
+        throw error;
+      }
+      // File doesn't exist, that's fine - we'll create it
+    }
+
+    // Create or update the file in the new branch
+    const fileContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+    const encodedContent = Buffer.from(fileContent).toString('base64');
+
+    const isUpdate = existingSha !== null;
+    const commitMessage = isUpdate
+      ? `Update badge definition: ${content.name || badgeId}`
+      : `Add badge definition: ${content.name || badgeId}`;
+
+    await octokit.rest.repos.createOrUpdateFileContents({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      path: filePath,
+      message: commitMessage,
+      content: encodedContent,
+      branch: branchName,
+      ...(existingSha && { sha: existingSha }),
+    });
+
+    // Create a pull request
+    const prTitle = title || (isUpdate ? `Update badge: ${content.name || badgeId}` : `Add badge: ${content.name || badgeId}`);
+    const prBody = description || `This PR ${isUpdate ? 'updates' : 'adds'} the badge definition for **${content.name || badgeId}**.
+
+**Badge ID:** \`${badgeId}\`
+**Category:** ${content.category || 'Not specified'}
+${content.eligibility?.rules?.length ? `**Eligibility Rules:** ${content.eligibility.rules.length}` : ''}
+${content.evidence?.sources?.length ? `**Evidence Sources:** ${content.evidence.sources.length}` : ''}
+
+Created by @${user.login} using the [Cornerstone Network Apps](https://apps.openpropertyassociation.ca).`;
+
+    const { data: pr } = await octokit.rest.pulls.create({
+      owner: GITHUB_REPO_OWNER,
+      repo: GITHUB_REPO_NAME,
+      title: prTitle,
+      body: prBody,
+      head: branchName,
+      base: baseBranch,
+    });
+
+    res.json({
+      success: true,
+      pr: {
+        number: pr.number,
+        url: pr.html_url,
+        title: pr.title,
+      },
+      branch: branchName,
+      file: filePath,
+      uri: `${BASE_URL}/${filePath}`,
+      isUpdate,
+    });
+  } catch (error) {
+    console.error('Error creating Badge PR:', error);
+    res.status(500).json({ error: error.message || 'Failed to create badge pull request' });
+  }
+});
+
 export default router;
