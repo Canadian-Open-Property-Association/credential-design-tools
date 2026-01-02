@@ -93,7 +93,7 @@ router.post('/forms/:formId/submissions', requireDatabase, async (req, res) => {
  * GET /api/submissions
  * List all submissions for current user's forms
  */
-router.get('/', requireDatabase, async (req, res) => {
+router.get('/submissions', requireDatabase, async (req, res) => {
   try {
     const user = getCurrentUser(req);
 
@@ -138,7 +138,7 @@ router.get('/', requireDatabase, async (req, res) => {
  * GET /api/submissions/form/:formId
  * List submissions for a specific form
  */
-router.get('/form/:formId', requireDatabase, async (req, res) => {
+router.get('/submissions/form/:formId', requireDatabase, async (req, res) => {
   try {
     const { formId } = req.params;
     const user = getCurrentUser(req);
@@ -178,7 +178,7 @@ router.get('/form/:formId', requireDatabase, async (req, res) => {
  * GET /api/submissions/:id
  * Get a single submission by ID
  */
-router.get('/:id', requireDatabase, async (req, res) => {
+router.get('/submissions/:id', requireDatabase, async (req, res) => {
   try {
     const { id } = req.params;
     const user = getCurrentUser(req);
@@ -221,7 +221,7 @@ router.get('/:id', requireDatabase, async (req, res) => {
  * DELETE /api/submissions/:id
  * Delete a submission
  */
-router.delete('/:id', requireDatabase, async (req, res) => {
+router.delete('/submissions/:id', requireDatabase, async (req, res) => {
   try {
     const { id } = req.params;
     const user = getCurrentUser(req);
@@ -264,7 +264,7 @@ router.delete('/:id', requireDatabase, async (req, res) => {
  * DELETE /api/submissions/bulk
  * Delete multiple submissions
  */
-router.delete('/bulk', requireDatabase, async (req, res) => {
+router.delete('/submissions/bulk', requireDatabase, async (req, res) => {
   try {
     const { ids } = req.body;
     const user = getCurrentUser(req);
@@ -317,7 +317,7 @@ router.delete('/bulk', requireDatabase, async (req, res) => {
  * GET /api/submissions/export/:formId
  * Export all submissions for a form as JSON
  */
-router.get('/export/:formId', requireDatabase, async (req, res) => {
+router.get('/submissions/export/:formId', requireDatabase, async (req, res) => {
   try {
     const { formId } = req.params;
     const user = getCurrentUser(req);
@@ -377,7 +377,7 @@ router.get('/export/:formId', requireDatabase, async (req, res) => {
  * GET /api/submissions/stats/:formId
  * Get submission statistics for a form
  */
-router.get('/stats/:formId', requireDatabase, async (req, res) => {
+router.get('/submissions/stats/:formId', requireDatabase, async (req, res) => {
   try {
     const { formId } = req.params;
     const user = getCurrentUser(req);
