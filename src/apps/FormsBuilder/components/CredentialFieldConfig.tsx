@@ -28,9 +28,10 @@ interface VctFile {
 
 interface VctContent {
   vct: string;
-  name: string;
+  name?: string;
   description?: string;
   schema_uri: string;
+  display?: { locale: string; name: string; description?: string }[];
   claims?: {
     path: (string | number | null)[];
     display?: { label: string; locale: string }[];
@@ -176,6 +177,15 @@ export default function CredentialFieldConfig({ field, onUpdate }: CredentialFie
   };
 
   const getCredentialDisplayName = (vct: VctContent): string => {
+    // Check display array first (SD-JWT VC format) - try en-CA, then en, then first available
+    if (vct.display && vct.display.length > 0) {
+      const enCA = vct.display.find(d => d.locale === 'en-CA');
+      if (enCA?.name) return enCA.name;
+      const en = vct.display.find(d => d.locale === 'en');
+      if (en?.name) return en.name;
+      if (vct.display[0]?.name) return vct.display[0].name;
+    }
+    // Fallback to top-level name or vct identifier
     return vct.name || vct.vct || 'Unknown Credential';
   };
 
@@ -401,84 +411,6 @@ export default function CredentialFieldConfig({ field, onUpdate }: CredentialFie
         </div>
       )}
 
-      {/* Accepted Issuers */}
-      {selectedVct && (
-        <div className="mb-3">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Accepted Issuers (optional)
-          </label>
-          <input
-            type="text"
-            value={field.credentialConfig?.acceptedIssuers?.join(', ') || ''}
-            onChange={(e) =>
-              onUpdate({
-                credentialConfig: {
-                  ...field.credentialConfig,
-                  acceptedIssuers: e.target.value
-                    .split(',')
-                    .map((s) => s.trim())
-                    .filter((s) => s.length > 0),
-                },
-              })
-            }
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            placeholder="e.g., Equifax, TransUnion, CRA"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Comma-separated list of trusted credential issuers
-          </p>
-        </div>
-      )}
-
-      {/* Schema/CredDef IDs - Advanced Options */}
-      {selectedVct && (
-        <details className="mt-4">
-          <summary className="text-sm font-medium text-gray-600 cursor-pointer hover:text-gray-800">
-            Advanced Options
-          </summary>
-          <div className="mt-3 space-y-3 pl-2 border-l-2 border-gray-200">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Schema ID (optional)
-              </label>
-              <input
-                type="text"
-                value={field.credentialConfig?.schemaId || ''}
-                onChange={(e) =>
-                  onUpdate({
-                    credentialConfig: {
-                      ...field.credentialConfig,
-                      schemaId: e.target.value,
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs"
-                placeholder="did:indy:..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Credential Definition ID (optional)
-              </label>
-              <input
-                type="text"
-                value={field.credentialConfig?.credDefId || ''}
-                onChange={(e) =>
-                  onUpdate({
-                    credentialConfig: {
-                      ...field.credentialConfig,
-                      credDefId: e.target.value,
-                    },
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-xs"
-                placeholder="did:indy:..."
-              />
-            </div>
-          </div>
-        </details>
-      )}
 
       {/* No credential selected state */}
       {!selectedVct && !isLoadingLibrary && !isLoadingVct && (
