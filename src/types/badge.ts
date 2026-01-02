@@ -236,11 +236,10 @@ export function generateBadgeId(name: string): string {
 // Helper to generate a human-readable rule description
 export function generateRuleDescription(
   rule: EligibilityRule,
-  vocabTypeName?: string,
+  _vocabTypeName?: string,
   propertyName?: string
 ): string {
   const property = propertyName || rule.vocabPropertyId;
-  const vocabType = vocabTypeName || rule.vocabTypeId;
   const operator = OPERATOR_LABELS[rule.operator];
 
   if (rule.operator === 'exists') {

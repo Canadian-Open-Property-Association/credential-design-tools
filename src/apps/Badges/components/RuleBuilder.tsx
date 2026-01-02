@@ -263,7 +263,7 @@ export default function RuleBuilder() {
                       <label className="block text-xs font-medium text-gray-600 mb-1">Value</label>
                       <input
                         type="text"
-                        value={rule.value ?? ''}
+                        value={typeof rule.value === 'boolean' ? String(rule.value) : (rule.value ?? '')}
                         onChange={(e) => {
                           // Try to parse as number if it looks like one
                           const value = e.target.value;
