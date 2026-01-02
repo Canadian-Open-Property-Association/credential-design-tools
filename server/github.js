@@ -7,10 +7,13 @@ import { requireAuth, getOctokit } from './auth.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = express.Router();
 
+// Use ASSETS_PATH env var for persistent storage (same as proxy.js)
+const ASSETS_DIR = process.env.ASSETS_PATH || path.join(__dirname, 'assets');
+
 // Helper function to read Forms Builder settings
 async function getFormsBuilderSettings() {
   try {
-    const settingsPath = path.join(__dirname, 'assets', 'forms-builder-settings.json');
+    const settingsPath = path.join(ASSETS_DIR, 'forms-builder-settings.json');
     const data = await fs.readFile(settingsPath, 'utf-8');
     return JSON.parse(data);
   } catch {
@@ -21,7 +24,7 @@ async function getFormsBuilderSettings() {
 // Helper function to read VCT Builder / Data Registry settings
 async function getDataRegistrySettings() {
   try {
-    const settingsPath = path.join(__dirname, 'assets', 'data-registry-settings.json');
+    const settingsPath = path.join(ASSETS_DIR, 'data-registry-settings.json');
     const data = await fs.readFile(settingsPath, 'utf-8');
     return JSON.parse(data);
   } catch {
@@ -31,7 +34,7 @@ async function getDataRegistrySettings() {
 
 // Helper function to save VCT Builder / Data Registry settings
 async function saveDataRegistrySettings(settings) {
-  const settingsPath = path.join(__dirname, 'assets', 'data-registry-settings.json');
+  const settingsPath = path.join(ASSETS_DIR, 'data-registry-settings.json');
   await fs.writeFile(settingsPath, JSON.stringify(settings, null, 2));
 }
 

@@ -12,7 +12,8 @@ import { fileURLToPath } from 'url';
 const router = express.Router();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ASSETS_DIR = path.join(__dirname, '..', 'assets');
+// Use ASSETS_PATH env var for persistent storage (same as proxy.js)
+const ASSETS_DIR = process.env.ASSETS_PATH || path.join(__dirname, '..', 'assets');
 const SETTINGS_FILE = path.join(ASSETS_DIR, 'forms-builder-settings.json');
 
 const DEFAULT_SETTINGS = {
