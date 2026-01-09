@@ -200,7 +200,14 @@ function readEnvConfig() {
 export function getOrbitConfig() {
   // Try file storage first
   const fileConfig = readFileConfig();
-  if (fileConfig && fileConfig.lobId) {
+
+  // Check if file config has any meaningful data (lobId OR any API baseUrls)
+  const hasFileConfig = fileConfig && (
+    fileConfig.lobId ||
+    (fileConfig.apis && Object.values(fileConfig.apis).some(api => api?.baseUrl))
+  );
+
+  if (hasFileConfig) {
     return {
       ...fileConfig,
       source: 'file',
