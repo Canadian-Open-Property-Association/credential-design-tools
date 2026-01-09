@@ -1,44 +1,14 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminStore } from '../store/adminStore';
 import { apps, AppCard, AppCategory, categoryConfig } from '../data/apps';
 
-const RECENT_APPS_KEY = 'copa-apps-recent-apps';
-const MAX_RECENT_APPS = 3;
-
-// Helper to get recent apps from localStorage
-function getRecentApps(): string[] {
-  try {
-    const stored = localStorage.getItem(RECENT_APPS_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch {
-    // Ignore parse errors
-  }
-  return [];
-}
-
-// Helper to save recent app to localStorage
-function saveRecentApp(appId: string): void {
-  try {
-    const recent = getRecentApps();
-    // Remove if already exists, then add to front
-    const filtered = recent.filter((id) => id !== appId);
-    const updated = [appId, ...filtered].slice(0, MAX_RECENT_APPS);
-    localStorage.setItem(RECENT_APPS_KEY, JSON.stringify(updated));
-  } catch {
-    // Ignore storage errors
-  }
-}
-
 interface AppCardComponentProps {
   app: AppCard;
   onNavigate: (app: AppCard) => void;
-  showRecentBadge?: boolean;
 }
 
-function AppCardComponent({ app, onNavigate, showRecentBadge }: AppCardComponentProps) {
+function AppCardComponent({ app, onNavigate }: AppCardComponentProps) {
   return (
     <div
       className={`relative bg-white rounded-xl shadow-sm border overflow-hidden transition-all ${
@@ -61,20 +31,6 @@ function AppCardComponent({ app, onNavigate, showRecentBadge }: AppCardComponent
       {app.adminOnly && app.available && (
         <div className="absolute top-3 right-3 px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
           Admin
-        </div>
-      )}
-
-      {/* Recent Badge */}
-      {showRecentBadge && !app.adminOnly && app.available && (
-        <div className="absolute top-3 right-3 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full flex items-center gap-1">
-          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-              clipRule="evenodd"
-            />
-          </svg>
-          Recent
         </div>
       )}
 
@@ -142,12 +98,10 @@ function CategorySection({ category, apps, onNavigate }: CategorySectionProps) {
 export default function AppSelectionPage() {
   const navigate = useNavigate();
   const { isAdmin, checkAdminStatus } = useAdminStore();
-  const [recentAppIds, setRecentAppIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     checkAdminStatus();
-    setRecentAppIds(getRecentApps());
   }, [checkAdminStatus]);
 
   // Filter apps - only show admin apps if user is admin
@@ -166,17 +120,6 @@ export default function AppSelectionPage() {
     [visibleApps, searchQuery]
   );
 
-  // Get recent apps (that are still visible/available and match search)
-  const recentApps = useMemo(
-    () =>
-      searchQuery.trim()
-        ? [] // Hide recent section when searching
-        : recentAppIds
-            .map((id) => visibleApps.find((app) => app.id === id && app.available))
-            .filter((app): app is AppCard => app !== undefined),
-    [searchQuery, recentAppIds, visibleApps]
-  );
-
   // Group apps by category
   const appsByCategory = useMemo(() => {
     const appsToGroup = searchQuery.trim() ? searchFilteredApps : visibleApps;
@@ -187,13 +130,11 @@ export default function AppSelectionPage() {
     };
 
     appsToGroup.forEach((app) => {
-      // Skip apps that are in recent (when not searching)
-      if (!searchQuery.trim() && recentAppIds.includes(app.id)) return;
       grouped[app.category].push(app);
     });
 
     return grouped;
-  }, [searchFilteredApps, visibleApps, searchQuery, recentAppIds]);
+  }, [searchFilteredApps, visibleApps, searchQuery]);
 
   // Get sorted categories
   const sortedCategories = useMemo(
@@ -206,7 +147,6 @@ export default function AppSelectionPage() {
 
   const handleNavigate = useCallback(
     (app: AppCard) => {
-      saveRecentApp(app.id);
       navigate(app.path);
     },
     [navigate]
@@ -280,43 +220,6 @@ export default function AppSelectionPage() {
                 {searchFilteredApps.length !== 1 ? 's' : ''} matching "{searchQuery}"
               </p>
             )}
-          </div>
-        )}
-
-        {/* Recently Used Section */}
-        {recentApps.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Recently Used</h2>
-                <p className="text-sm text-gray-500">Quick access to your recent apps</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {recentApps.map((app) => (
-                <AppCardComponent
-                  key={`recent-${app.id}`}
-                  app={app}
-                  onNavigate={handleNavigate}
-                  showRecentBadge
-                />
-              ))}
-            </div>
           </div>
         )}
 
