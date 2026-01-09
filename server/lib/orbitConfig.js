@@ -1,9 +1,11 @@
 /**
  * Orbit Configuration Helper
  *
- * Manages Orbit LOB credentials with support for:
- * 1. File-based storage (persistent, UI-configurable)
- * 2. Environment variables (fallback)
+ * Manages Orbit credentials and API configurations with support for:
+ * 1. Shared credentials (LOB ID + API Key) across all APIs
+ * 2. Per-API Base URLs (LOB, RegisterSocket, Connection, Holder, Verifier, Issuer, Chat)
+ * 3. File-based storage (persistent, UI-configurable)
+ * 4. Environment variables (fallback)
  *
  * API keys are encrypted at rest using AES-256-GCM.
  */
@@ -14,6 +16,9 @@ import path from 'path';
 
 const SETTINGS_FILE = 'orbit-settings.json';
 const ALGORITHM = 'aes-256-gcm';
+
+// Valid API types
+const VALID_API_TYPES = ['lob', 'registerSocket', 'connection', 'holder', 'verifier', 'issuer', 'chat'];
 
 // Get encryption key from environment or use default for dev
 // In production, ORBIT_ENCRYPTION_KEY should be set
@@ -77,6 +82,51 @@ function decrypt(encrypted) {
 }
 
 /**
+ * Get empty APIs config structure
+ */
+function getEmptyApisConfig() {
+  return {
+    lob: { baseUrl: '' },
+    registerSocket: { baseUrl: '' },
+    connection: { baseUrl: '' },
+    holder: { baseUrl: '' },
+    verifier: { baseUrl: '' },
+    issuer: { baseUrl: '' },
+    chat: { baseUrl: '' },
+  };
+}
+
+/**
+ * Migrate old config format to new multi-API format
+ * Old: { baseUrl, tenantId, apiKeyEncrypted }
+ * New: { lobId, apiKeyEncrypted, apis: { lob: { baseUrl }, ... } }
+ */
+function migrateConfig(oldConfig) {
+  // Check if migration is needed (old format has tenantId or baseUrl at root level)
+  if (oldConfig.tenantId !== undefined || (oldConfig.baseUrl !== undefined && !oldConfig.apis)) {
+    console.log('Migrating Orbit config from old format to new multi-API format');
+
+    const migrated = {
+      lobId: oldConfig.tenantId || oldConfig.lobId || '',
+      apiKeyEncrypted: oldConfig.apiKeyEncrypted || null,
+      apis: getEmptyApisConfig(),
+      configuredAt: oldConfig.configuredAt || new Date().toISOString(),
+      configuredBy: oldConfig.configuredBy || 'migration',
+    };
+
+    // Move old baseUrl to lob API
+    if (oldConfig.baseUrl) {
+      migrated.apis.lob.baseUrl = oldConfig.baseUrl;
+    }
+
+    return migrated;
+  }
+
+  // Already in new format
+  return oldConfig;
+}
+
+/**
  * Read config from file storage
  */
 function readFileConfig() {
@@ -86,12 +136,24 @@ function readFileConfig() {
       return null;
     }
 
-    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    let data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
+    // Migrate if needed
+    const migrated = migrateConfig(data);
+    if (migrated !== data) {
+      // Save migrated config
+      fs.writeFileSync(filePath, JSON.stringify(migrated, null, 2));
+      data = migrated;
+    }
 
     // Decrypt API key if present
     if (data.apiKeyEncrypted) {
       data.apiKey = decrypt(data.apiKeyEncrypted);
-      delete data.apiKeyEncrypted;
+    }
+
+    // Ensure apis object exists
+    if (!data.apis) {
+      data.apis = getEmptyApisConfig();
     }
 
     return data;
@@ -105,32 +167,40 @@ function readFileConfig() {
  * Read config from environment variables
  */
 function readEnvConfig() {
-  const baseUrl = process.env.ORBIT_BASE_URL;
-  const tenantId = process.env.ORBIT_TENANT_ID;
+  const lobId = process.env.ORBIT_LOB_ID || process.env.ORBIT_TENANT_ID;
   const apiKey = process.env.ORBIT_API_KEY;
+  const baseUrl = process.env.ORBIT_BASE_URL;
 
-  if (!baseUrl && !tenantId) {
+  if (!lobId && !baseUrl) {
     return null;
   }
 
   return {
-    baseUrl: baseUrl || '',
-    tenantId: tenantId || '',
+    lobId: lobId || '',
     apiKey: apiKey || '',
+    apis: {
+      lob: { baseUrl: baseUrl || '' },
+      registerSocket: { baseUrl: '' },
+      connection: { baseUrl: '' },
+      holder: { baseUrl: '' },
+      verifier: { baseUrl: '' },
+      issuer: { baseUrl: '' },
+      chat: { baseUrl: '' },
+    },
     source: 'environment',
   };
 }
 
 /**
- * Get Orbit configuration
+ * Get full Orbit configuration
  * Priority: File storage > Environment variables
  *
- * @returns {Object|null} Config object with baseUrl, tenantId, apiKey, or null
+ * @returns {Object|null} Config object with lobId, apiKey, apis, or null
  */
 export function getOrbitConfig() {
   // Try file storage first
   const fileConfig = readFileConfig();
-  if (fileConfig && fileConfig.baseUrl && fileConfig.tenantId) {
+  if (fileConfig && fileConfig.lobId) {
     return {
       ...fileConfig,
       source: 'file',
@@ -139,7 +209,7 @@ export function getOrbitConfig() {
 
   // Fall back to environment variables
   const envConfig = readEnvConfig();
-  if (envConfig && envConfig.baseUrl && envConfig.tenantId) {
+  if (envConfig && (envConfig.lobId || envConfig.apis?.lob?.baseUrl)) {
     return envConfig;
   }
 
@@ -147,13 +217,40 @@ export function getOrbitConfig() {
 }
 
 /**
- * Save Orbit configuration to file storage
+ * Get configuration for a specific API
+ * Used by consumer apps (e.g., Test Issuer uses 'issuer' API)
  *
- * @param {Object} config - Config with baseUrl, tenantId, apiKey
- * @param {string} configuredBy - Username of who made the change
- * @returns {Object} Saved config (without decrypted apiKey)
+ * @param {string} apiType - One of: lob, registerSocket, connection, holder, verifier, issuer, chat
+ * @returns {Object|null} Config with baseUrl, lobId, apiKey or null if not configured
  */
-export function saveOrbitConfig(config, configuredBy = 'unknown') {
+export function getOrbitApiConfig(apiType) {
+  if (!VALID_API_TYPES.includes(apiType)) {
+    console.error(`Invalid API type: ${apiType}`);
+    return null;
+  }
+
+  const config = getOrbitConfig();
+  if (!config) return null;
+
+  const apiConfig = config.apis?.[apiType];
+  if (!apiConfig?.baseUrl) return null;
+
+  return {
+    baseUrl: apiConfig.baseUrl,
+    lobId: config.lobId,
+    apiKey: config.apiKey || '',
+  };
+}
+
+/**
+ * Save shared credentials (LOB ID + API Key)
+ *
+ * @param {string} lobId - LOB identifier
+ * @param {string} apiKey - API key (optional - if empty, keeps existing)
+ * @param {string} configuredBy - Username of who made the change
+ * @returns {Object} Updated config status
+ */
+export function saveOrbitCredentials(lobId, apiKey, configuredBy = 'unknown') {
   const assetsPath = getAssetsPath();
 
   // Ensure assets directory exists
@@ -161,31 +258,84 @@ export function saveOrbitConfig(config, configuredBy = 'unknown') {
     fs.mkdirSync(assetsPath, { recursive: true });
   }
 
+  // Read existing config or create new
+  const existing = readFileConfig() || {
+    lobId: '',
+    apiKeyEncrypted: null,
+    apis: getEmptyApisConfig(),
+  };
+
   const dataToSave = {
-    baseUrl: config.baseUrl || '',
-    tenantId: config.tenantId || '',
+    lobId: lobId || '',
+    apis: existing.apis || getEmptyApisConfig(),
     configuredAt: new Date().toISOString(),
     configuredBy,
   };
 
-  // Encrypt API key before saving
-  if (config.apiKey) {
-    dataToSave.apiKeyEncrypted = encrypt(config.apiKey);
+  // Handle API key - keep existing if new one is empty
+  if (apiKey) {
+    dataToSave.apiKeyEncrypted = encrypt(apiKey);
+  } else if (existing.apiKeyEncrypted) {
+    dataToSave.apiKeyEncrypted = existing.apiKeyEncrypted;
   }
 
   const filePath = getSettingsFilePath();
   fs.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2));
 
-  console.log(`Orbit config saved by ${configuredBy}`);
+  console.log(`Orbit credentials saved by ${configuredBy}`);
 
-  return {
-    baseUrl: dataToSave.baseUrl,
-    tenantId: dataToSave.tenantId,
-    configuredAt: dataToSave.configuredAt,
-    configuredBy: dataToSave.configuredBy,
-    hasApiKey: !!config.apiKey,
-    source: 'file',
+  return getOrbitConfigStatus();
+}
+
+/**
+ * Save a single API's Base URL
+ *
+ * @param {string} apiType - One of: lob, registerSocket, connection, holder, verifier, issuer, chat
+ * @param {string} baseUrl - The Base URL for this API
+ * @param {string} configuredBy - Username of who made the change
+ * @returns {Object} Updated config status
+ */
+export function saveApiConfig(apiType, baseUrl, configuredBy = 'unknown') {
+  if (!VALID_API_TYPES.includes(apiType)) {
+    throw new Error(`Invalid API type: ${apiType}`);
+  }
+
+  const assetsPath = getAssetsPath();
+
+  // Ensure assets directory exists
+  if (!fs.existsSync(assetsPath)) {
+    fs.mkdirSync(assetsPath, { recursive: true });
+  }
+
+  // Read existing config or create new
+  const existing = readFileConfig() || {
+    lobId: '',
+    apiKeyEncrypted: null,
+    apis: getEmptyApisConfig(),
   };
+
+  // Update the specific API's baseUrl
+  const apis = existing.apis || getEmptyApisConfig();
+  apis[apiType] = { baseUrl: baseUrl || '' };
+
+  const dataToSave = {
+    lobId: existing.lobId || '',
+    apis,
+    configuredAt: new Date().toISOString(),
+    configuredBy,
+  };
+
+  // Keep existing encrypted API key
+  if (existing.apiKeyEncrypted) {
+    dataToSave.apiKeyEncrypted = existing.apiKeyEncrypted;
+  }
+
+  const filePath = getSettingsFilePath();
+  fs.writeFileSync(filePath, JSON.stringify(dataToSave, null, 2));
+
+  console.log(`Orbit ${apiType} API config saved by ${configuredBy}`);
+
+  return getOrbitConfigStatus();
 }
 
 /**
@@ -207,13 +357,24 @@ export function deleteOrbitConfig() {
 }
 
 /**
- * Check if Orbit is configured
+ * Check if a specific API is configured
  *
- * @returns {boolean} True if baseUrl and tenantId are set
+ * @param {string} apiType - API type to check
+ * @returns {boolean} True if the API has a baseUrl configured
+ */
+export function isApiConfigured(apiType) {
+  const config = getOrbitApiConfig(apiType);
+  return !!(config?.baseUrl);
+}
+
+/**
+ * Check if Orbit credentials are configured (LOB ID exists)
+ *
+ * @returns {boolean} True if lobId is set
  */
 export function isOrbitConfigured() {
   const config = getOrbitConfig();
-  return !!(config?.baseUrl && config?.tenantId);
+  return !!(config?.lobId);
 }
 
 /**
@@ -225,49 +386,66 @@ export function getOrbitConfigStatus() {
   if (!config) {
     return {
       configured: false,
-      baseUrl: '',
-      tenantId: '',
+      lobId: '',
       hasApiKey: false,
       source: null,
       configuredAt: null,
       configuredBy: null,
+      apis: getEmptyApisConfig(),
     };
   }
 
   return {
-    configured: !!(config.baseUrl && config.tenantId),
-    baseUrl: config.baseUrl || '',
-    tenantId: config.tenantId || '',
+    configured: !!(config.lobId),
+    lobId: config.lobId || '',
     hasApiKey: !!config.apiKey,
     source: config.source,
     configuredAt: config.configuredAt || null,
     configuredBy: config.configuredBy || null,
+    apis: config.apis || getEmptyApisConfig(),
   };
 }
 
 /**
- * Test connection to Orbit API
+ * Test connection to a specific Orbit API
  *
- * @param {Object} config - Config with baseUrl, tenantId, apiKey
+ * @param {string} apiType - API type to test
+ * @param {string} baseUrl - Base URL to test (optional, uses stored if not provided)
+ * @param {string} lobId - LOB ID (optional, uses stored if not provided)
+ * @param {string} apiKey - API Key (optional, uses stored if not provided)
  * @returns {Promise<Object>} Result with success boolean and message
  */
-export async function testOrbitConnection(config) {
-  if (!config.baseUrl || !config.tenantId) {
+export async function testApiConnection(apiType, baseUrl, lobId, apiKey) {
+  // Get stored config as fallback
+  const storedConfig = getOrbitConfig();
+
+  const testBaseUrl = baseUrl || storedConfig?.apis?.[apiType]?.baseUrl;
+  const testLobId = lobId || storedConfig?.lobId;
+  const testApiKey = apiKey || storedConfig?.apiKey;
+
+  if (!testBaseUrl) {
     return {
       success: false,
-      message: 'Base URL and Tenant ID are required',
+      message: 'Base URL is required',
+    };
+  }
+
+  if (!testLobId) {
+    return {
+      success: false,
+      message: 'LOB ID is required - configure credentials first',
     };
   }
 
   try {
-    // Try to reach the Orbit API health endpoint
-    const url = new URL('/api/health', config.baseUrl).toString();
+    // Try to reach the API health endpoint
+    const url = new URL('/api/health', testBaseUrl).toString();
 
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'X-Tenant-ID': config.tenantId,
-        ...(config.apiKey && { 'Authorization': `Bearer ${config.apiKey}` }),
+        'x-lob-id': testLobId,
+        ...(testApiKey && { 'x-api-key': testApiKey }),
       },
       signal: AbortSignal.timeout(10000), // 10 second timeout
     });
@@ -275,7 +453,7 @@ export async function testOrbitConnection(config) {
     if (response.ok) {
       return {
         success: true,
-        message: 'Successfully connected to Orbit',
+        message: `Successfully connected to ${apiType} API`,
       };
     }
 
@@ -288,7 +466,7 @@ export async function testOrbitConnection(config) {
     }
 
     if (response.status === 404) {
-      // Health endpoint might not exist, try to check base URL
+      // Health endpoint might not exist, try base URL
       return {
         success: true,
         message: 'Connected (health endpoint not available)',
@@ -297,7 +475,7 @@ export async function testOrbitConnection(config) {
 
     return {
       success: false,
-      message: `Orbit returned status ${response.status}`,
+      message: `API returned status ${response.status}`,
     };
   } catch (error) {
     if (error.name === 'AbortError' || error.name === 'TimeoutError') {
@@ -312,4 +490,41 @@ export async function testOrbitConnection(config) {
       message: `Connection failed: ${error.message}`,
     };
   }
+}
+
+// Legacy compatibility - keep old function name working
+export async function testOrbitConnection(config) {
+  return testApiConnection(
+    'lob',
+    config?.baseUrl,
+    config?.lobId || config?.tenantId,
+    config?.apiKey
+  );
+}
+
+// Legacy compatibility - keep old save function working
+export function saveOrbitConfig(config, configuredBy = 'unknown') {
+  // If old format, convert and save
+  if (config.baseUrl !== undefined || config.tenantId !== undefined) {
+    saveOrbitCredentials(config.tenantId || config.lobId, config.apiKey, configuredBy);
+    if (config.baseUrl) {
+      saveApiConfig('lob', config.baseUrl, configuredBy);
+    }
+    return getOrbitConfigStatus();
+  }
+
+  // New format - save credentials and APIs separately
+  if (config.lobId !== undefined || config.apiKey !== undefined) {
+    saveOrbitCredentials(config.lobId, config.apiKey, configuredBy);
+  }
+
+  if (config.apis) {
+    for (const [apiType, apiConfig] of Object.entries(config.apis)) {
+      if (VALID_API_TYPES.includes(apiType) && apiConfig.baseUrl !== undefined) {
+        saveApiConfig(apiType, apiConfig.baseUrl, configuredBy);
+      }
+    }
+  }
+
+  return getOrbitConfigStatus();
 }

@@ -26,8 +26,11 @@ import {
   getOrbitConfig,
   getOrbitConfigStatus,
   saveOrbitConfig,
+  saveOrbitCredentials,
+  saveApiConfig,
   deleteOrbitConfig,
   testOrbitConnection,
+  testApiConnection,
 } from './lib/orbitConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -989,7 +992,10 @@ app.get('/api/admin/check', requireProjectAuth, (req, res) => {
 // Orbit Configuration (admin only)
 // =============================================================================
 
-// Get Orbit config status (without API key)
+// Valid API types
+const VALID_ORBIT_API_TYPES = ['lob', 'registerSocket', 'connection', 'holder', 'verifier', 'issuer', 'chat'];
+
+// Get full Orbit config status (all APIs, without API key)
 app.get('/api/admin/orbit-config', requireProjectAuth, requireAdmin, (req, res) => {
   try {
     const status = getOrbitConfigStatus();
@@ -1000,17 +1006,87 @@ app.get('/api/admin/orbit-config', requireProjectAuth, requireAdmin, (req, res) 
   }
 });
 
-// Save Orbit config
-app.put('/api/admin/orbit-config', requireProjectAuth, requireAdmin, (req, res) => {
+// Save shared credentials (LOB ID + API Key)
+app.put('/api/admin/orbit-credentials', requireProjectAuth, requireAdmin, (req, res) => {
   try {
-    const { baseUrl, tenantId, apiKey } = req.body;
+    const { lobId, apiKey } = req.body;
 
-    if (!baseUrl || !tenantId) {
-      return res.status(400).json({ error: 'Base URL and Tenant ID are required' });
+    if (!lobId) {
+      return res.status(400).json({ error: 'LOB ID is required' });
     }
 
     const username = req.session?.user?.login || 'unknown';
-    const result = saveOrbitConfig({ baseUrl, tenantId, apiKey }, username);
+    const result = saveOrbitCredentials(lobId, apiKey, username);
+
+    // Log the configuration change
+    logAccess(req.session?.user?.id || 'unknown', username, 'orbit_credentials_update', 'settings');
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving Orbit credentials:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save a single API's Base URL
+app.put('/api/admin/orbit-api/:apiType', requireProjectAuth, requireAdmin, (req, res) => {
+  try {
+    const { apiType } = req.params;
+    const { baseUrl } = req.body;
+
+    if (!VALID_ORBIT_API_TYPES.includes(apiType)) {
+      return res.status(400).json({ error: `Invalid API type: ${apiType}` });
+    }
+
+    const username = req.session?.user?.login || 'unknown';
+    const result = saveApiConfig(apiType, baseUrl || '', username);
+
+    // Log the configuration change
+    logAccess(req.session?.user?.id || 'unknown', username, `orbit_api_${apiType}_update`, 'settings');
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving Orbit API config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Test a specific API connection
+app.post('/api/admin/orbit-api/:apiType/test', requireProjectAuth, requireAdmin, async (req, res) => {
+  try {
+    const { apiType } = req.params;
+    const { baseUrl, lobId, apiKey } = req.body;
+
+    if (!VALID_ORBIT_API_TYPES.includes(apiType)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid API type: ${apiType}`,
+      });
+    }
+
+    const result = await testApiConnection(apiType, baseUrl, lobId, apiKey);
+    res.json(result);
+  } catch (error) {
+    console.error('Error testing Orbit API connection:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+// Legacy: Save Orbit config (supports old format for backwards compatibility)
+app.put('/api/admin/orbit-config', requireProjectAuth, requireAdmin, (req, res) => {
+  try {
+    const { baseUrl, tenantId, lobId, apiKey, apis } = req.body;
+
+    const username = req.session?.user?.login || 'unknown';
+
+    // Support both old format (baseUrl, tenantId) and new format (lobId, apis)
+    const result = saveOrbitConfig(
+      { baseUrl, tenantId, lobId: lobId || tenantId, apiKey, apis },
+      username
+    );
 
     // Log the configuration change
     logAccess(req.session?.user?.id || 'unknown', username, 'orbit_config_update', 'settings');
@@ -1022,15 +1098,15 @@ app.put('/api/admin/orbit-config', requireProjectAuth, requireAdmin, (req, res) 
   }
 });
 
-// Test Orbit connection
+// Legacy: Test Orbit connection (for backwards compatibility)
 app.post('/api/admin/orbit-config/test', requireProjectAuth, requireAdmin, async (req, res) => {
   try {
-    const { baseUrl, tenantId, apiKey } = req.body;
+    const { baseUrl, tenantId, lobId, apiKey } = req.body;
 
     // If no config provided in body, use stored config
     let configToTest;
-    if (baseUrl && tenantId) {
-      configToTest = { baseUrl, tenantId, apiKey };
+    if (baseUrl && (tenantId || lobId)) {
+      configToTest = { baseUrl, tenantId: tenantId || lobId, lobId: lobId || tenantId, apiKey };
     } else {
       configToTest = getOrbitConfig();
       if (!configToTest) {

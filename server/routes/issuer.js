@@ -12,7 +12,9 @@ import { getDb, schema } from '../db/index.js';
 import { eq, desc } from 'drizzle-orm';
 import {
   getOrbitConfig,
+  getOrbitApiConfig,
   isOrbitConfigured,
+  isApiConfigured,
   getOrbitConfigStatus,
 } from '../lib/orbitConfig.js';
 
@@ -44,13 +46,13 @@ const requireAuth = (req, res, next) => {
 };
 
 /**
- * Middleware to check Orbit configuration
+ * Middleware to check Orbit Issuer API configuration
  */
 const requireOrbit = (req, res, next) => {
-  if (!isOrbitConfigured()) {
+  if (!isApiConfigured('issuer')) {
     return res.status(503).json({
-      error: 'Orbit LOB not configured',
-      message: 'Please configure Orbit in Settings or set ORBIT_BASE_URL and ORBIT_TENANT_ID environment variables.',
+      error: 'Issuer API not configured',
+      message: 'Please configure the Issuer API Base URL in Settings.',
     });
   }
   next();
@@ -63,14 +65,15 @@ const credentialOffers = new Map();
 
 /**
  * GET /api/issuer/orbit/status
- * Check Orbit LOB connection status
+ * Check Orbit Issuer API connection status
  */
 router.get('/orbit/status', requireAuth, (req, res) => {
+  const issuerConfig = getOrbitApiConfig('issuer');
   const status = getOrbitConfigStatus();
   res.json({
-    baseUrl: status.baseUrl,
-    tenantId: status.tenantId,
-    connected: status.configured,
+    baseUrl: issuerConfig?.baseUrl || null,
+    lobId: status.lobId,
+    connected: isApiConfigured('issuer'),
     source: status.source,
   });
 });
@@ -80,10 +83,10 @@ router.get('/orbit/status', requireAuth, (req, res) => {
  * List all credential schemas in the catalog
  */
 router.get('/catalog', requireAuth, (req, res) => {
-  if (!isOrbitConfigured()) {
+  if (!isApiConfigured('issuer')) {
     return res.status(503).json({
-      error: 'Orbit LOB not configured',
-      message: 'Test Issuer requires Orbit LOB to be configured.',
+      error: 'Issuer API not configured',
+      message: 'Test Issuer requires the Issuer API to be configured in Settings.',
     });
   }
 
@@ -309,10 +312,10 @@ router.post('/offers', requireAuth, requireOrbit, async (req, res) => {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + expiresInMinutes * 60 * 1000);
 
-    // In a real implementation, this would call the Orbit LOB API
+    // In a real implementation, this would call the Orbit Issuer API
     // For demo, we create a mock offer with a QR code placeholder
-    const orbitConfig = getOrbitConfig();
-    const offerUrl = `${orbitConfig.baseUrl}/offers/${offerId}`;
+    const issuerConfig = getOrbitApiConfig('issuer');
+    const offerUrl = `${issuerConfig.baseUrl}/offers/${offerId}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(offerUrl)}`;
 
     const offer = {

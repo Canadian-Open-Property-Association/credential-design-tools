@@ -1,4 +1,11 @@
 import { create } from 'zustand';
+import {
+  OrbitApiType,
+  OrbitConfigStatus,
+  OrbitTestResult,
+  SettingsSection,
+  ApisConfig,
+} from '../types/orbitApis';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5174';
 
@@ -75,26 +82,25 @@ export interface DateRange {
   preset: 'today' | '7d' | '30d' | '90d' | 'custom';
 }
 
-// Orbit Configuration types
-export interface OrbitConfigStatus {
-  configured: boolean;
-  baseUrl: string;
-  tenantId: string;
-  hasApiKey: boolean;
-  source: 'file' | 'environment' | null;
-  configuredAt: string | null;
-  configuredBy: string | null;
+// Re-export orbit types for backwards compatibility
+export type { OrbitConfigStatus, OrbitTestResult, SettingsSection, ApisConfig };
+
+// Input types for orbit configuration
+export interface OrbitCredentialsInput {
+  lobId: string;
+  apiKey?: string;
 }
 
+export interface ApiConfigInput {
+  apiType: OrbitApiType;
+  baseUrl: string;
+}
+
+// Legacy input type for backwards compatibility
 export interface OrbitConfigInput {
   baseUrl: string;
   tenantId: string;
   apiKey: string;
-}
-
-export interface OrbitTestResult {
-  success: boolean;
-  message: string;
 }
 
 interface AdminState {
@@ -111,14 +117,18 @@ interface AdminState {
   analytics: AnalyticsData | null;
   isAnalyticsLoading: boolean;
   analyticsDateRange: DateRange;
-  activeTab: 'logs' | 'analytics' | 'orbit';
+
+  // Settings navigation
+  selectedSection: SettingsSection;
 
   // Orbit Configuration state
   orbitConfig: OrbitConfigStatus | null;
   isOrbitConfigLoading: boolean;
   orbitConfigError: string | null;
-  orbitTestResult: OrbitTestResult | null;
-  isOrbitTesting: boolean;
+
+  // Per-API test results
+  apiTestResults: Partial<Record<OrbitApiType, OrbitTestResult>>;
+  apiTestLoading: Partial<Record<OrbitApiType, boolean>>;
 
   checkAdminStatus: () => Promise<void>;
   fetchLogs: (filters?: LogFilters, page?: number) => Promise<void>;
@@ -128,13 +138,27 @@ interface AdminState {
   // Analytics actions
   fetchAnalytics: (startDate?: string, endDate?: string) => Promise<void>;
   setAnalyticsDateRange: (range: DateRange) => void;
+
+  // Settings navigation
+  setSelectedSection: (section: SettingsSection) => void;
+
+  // Legacy activeTab support (maps to selectedSection)
+  activeTab: 'logs' | 'analytics' | 'orbit';
   setActiveTab: (tab: 'logs' | 'analytics' | 'orbit') => void;
 
   // Orbit Configuration actions
   fetchOrbitConfig: () => Promise<void>;
+  updateOrbitCredentials: (input: OrbitCredentialsInput) => Promise<boolean>;
+  updateApiConfig: (apiType: OrbitApiType, baseUrl: string) => Promise<boolean>;
+  testApiConnection: (apiType: OrbitApiType, baseUrl?: string) => Promise<OrbitTestResult>;
+  resetOrbitConfig: () => Promise<void>;
+  clearApiTestResult: (apiType: OrbitApiType) => void;
+
+  // Legacy methods for backwards compatibility
   updateOrbitConfig: (config: OrbitConfigInput) => Promise<boolean>;
   testOrbitConnection: (config?: OrbitConfigInput) => Promise<OrbitTestResult>;
-  resetOrbitConfig: () => Promise<void>;
+  orbitTestResult: OrbitTestResult | null;
+  isOrbitTesting: boolean;
   clearOrbitTestResult: () => void;
 }
 
@@ -169,12 +193,23 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   analytics: null,
   isAnalyticsLoading: false,
   analyticsDateRange: getDefaultDateRange(),
-  activeTab: 'logs',
+
+  // Settings navigation
+  selectedSection: 'credentials',
+
+  // Legacy activeTab (computed from selectedSection)
+  activeTab: 'orbit',
 
   // Orbit Configuration initial state
   orbitConfig: null,
   isOrbitConfigLoading: false,
   orbitConfigError: null,
+
+  // Per-API test results
+  apiTestResults: {},
+  apiTestLoading: {},
+
+  // Legacy test result state
   orbitTestResult: null,
   isOrbitTesting: false,
 
@@ -199,7 +234,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         isAdmin: false,
         isAdminLoading: false,
         isAdminChecked: true,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   },
@@ -234,12 +269,12 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         logs: data.logs,
         pagination: data.pagination,
         filters: currentFilters,
-        isLogsLoading: false
+        isLogsLoading: false,
       });
     } catch (error) {
       set({
         isLogsLoading: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   },
@@ -294,8 +329,29 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     get().fetchAnalytics(range.startDate, range.endDate);
   },
 
+  // Settings navigation
+  setSelectedSection: (section: SettingsSection) => {
+    set({ selectedSection: section });
+    // Also update legacy activeTab for backwards compat
+    if (section === 'logs') {
+      set({ activeTab: 'logs' });
+    } else if (section === 'analytics') {
+      set({ activeTab: 'analytics' });
+    } else {
+      set({ activeTab: 'orbit' });
+    }
+  },
+
+  // Legacy setActiveTab (maps to setSelectedSection)
   setActiveTab: (tab: 'logs' | 'analytics' | 'orbit') => {
     set({ activeTab: tab });
+    if (tab === 'logs') {
+      set({ selectedSection: 'logs' });
+    } else if (tab === 'analytics') {
+      set({ selectedSection: 'analytics' });
+    } else {
+      set({ selectedSection: 'credentials' });
+    }
   },
 
   // Orbit Configuration actions
@@ -324,6 +380,137 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
+  updateOrbitCredentials: async (input: OrbitCredentialsInput) => {
+    set({ isOrbitConfigLoading: true, orbitConfigError: null });
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/orbit-credentials`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(input),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update Orbit credentials');
+      }
+
+      const data = await response.json();
+      set({
+        orbitConfig: data,
+        isOrbitConfigLoading: false,
+      });
+      return true;
+    } catch (error) {
+      set({
+        isOrbitConfigLoading: false,
+        orbitConfigError: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return false;
+    }
+  },
+
+  updateApiConfig: async (apiType: OrbitApiType, baseUrl: string) => {
+    set({ isOrbitConfigLoading: true, orbitConfigError: null });
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/orbit-api/${apiType}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ baseUrl }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update API configuration');
+      }
+
+      const data = await response.json();
+      set({
+        orbitConfig: data,
+        isOrbitConfigLoading: false,
+      });
+      return true;
+    } catch (error) {
+      set({
+        isOrbitConfigLoading: false,
+        orbitConfigError: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return false;
+    }
+  },
+
+  testApiConnection: async (apiType: OrbitApiType, baseUrl?: string) => {
+    set((state) => ({
+      apiTestLoading: { ...state.apiTestLoading, [apiType]: true },
+      apiTestResults: { ...state.apiTestResults, [apiType]: undefined },
+    }));
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/orbit-api/${apiType}/test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ baseUrl }),
+      });
+
+      const data = await response.json();
+      set((state) => ({
+        apiTestLoading: { ...state.apiTestLoading, [apiType]: false },
+        apiTestResults: { ...state.apiTestResults, [apiType]: data },
+      }));
+      return data;
+    } catch (error) {
+      const result = {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+      };
+      set((state) => ({
+        apiTestLoading: { ...state.apiTestLoading, [apiType]: false },
+        apiTestResults: { ...state.apiTestResults, [apiType]: result },
+      }));
+      return result;
+    }
+  },
+
+  resetOrbitConfig: async () => {
+    set({ isOrbitConfigLoading: true, orbitConfigError: null });
+
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/orbit-config`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reset Orbit configuration');
+      }
+
+      // Refetch to get env var config (if any)
+      await get().fetchOrbitConfig();
+    } catch (error) {
+      set({
+        isOrbitConfigLoading: false,
+        orbitConfigError: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  },
+
+  clearApiTestResult: (apiType: OrbitApiType) => {
+    set((state) => ({
+      apiTestResults: { ...state.apiTestResults, [apiType]: undefined },
+    }));
+  },
+
+  // Legacy methods for backwards compatibility
   updateOrbitConfig: async (config: OrbitConfigInput) => {
     set({ isOrbitConfigLoading: true, orbitConfigError: null });
 
@@ -344,15 +531,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
       const data = await response.json();
       set({
-        orbitConfig: {
-          configured: true,
-          baseUrl: data.baseUrl,
-          tenantId: data.tenantId,
-          hasApiKey: data.hasApiKey,
-          source: data.source,
-          configuredAt: data.configuredAt,
-          configuredBy: data.configuredBy,
-        },
+        orbitConfig: data,
         isOrbitConfigLoading: false,
       });
       return true;
@@ -394,29 +573,6 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         orbitTestResult: result,
       });
       return result;
-    }
-  },
-
-  resetOrbitConfig: async () => {
-    set({ isOrbitConfigLoading: true, orbitConfigError: null });
-
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/orbit-config`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reset Orbit configuration');
-      }
-
-      // Refetch to get env var config (if any)
-      await get().fetchOrbitConfig();
-    } catch (error) {
-      set({
-        isOrbitConfigLoading: false,
-        orbitConfigError: error instanceof Error ? error.message : 'Unknown error',
-      });
     }
   },
 
