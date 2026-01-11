@@ -78,6 +78,7 @@ export async function initializeDatabase() {
   try {
     // Create tables using raw SQL (Drizzle migrations would be better for production)
     await pool.query(`
+      -- Forms table
       CREATE TABLE IF NOT EXISTS forms (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         title VARCHAR(255) NOT NULL,
@@ -114,6 +115,66 @@ export async function initializeDatabase() {
 
       CREATE INDEX IF NOT EXISTS idx_submissions_form ON submissions(form_id);
       CREATE INDEX IF NOT EXISTS idx_submissions_submitted_at ON submissions(submitted_at);
+
+      -- Credential Library table for storing imported credentials
+      CREATE TABLE IF NOT EXISTS credential_library (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        display_name VARCHAR(255) NOT NULL,
+        description TEXT,
+        tags JSONB,
+        ledger_schema_id VARCHAR(255) NOT NULL,
+        ledger_cred_def_id VARCHAR(255) NOT NULL,
+        orbit_schema_id VARCHAR(255),
+        orbit_cred_def_id VARCHAR(255),
+        attributes JSONB,
+        issuer_did VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_cred_lib_ledger_schema ON credential_library(ledger_schema_id);
+
+      -- Proof Requests audit table for tracking proof requests
+      CREATE TABLE IF NOT EXISTS proof_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        proof_request_id VARCHAR(255) NOT NULL,
+        cred_proof_id VARCHAR(255) NOT NULL,
+        form_id UUID REFERENCES forms(id),
+        session_id UUID NOT NULL,
+        socket_session_id VARCHAR(255),
+        state VARCHAR(50),
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_proof_requests_cred_proof_id ON proof_requests(cred_proof_id);
+
+      -- Proof Templates table for storing proof template definitions
+      CREATE TABLE IF NOT EXISTS proof_templates (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        purpose TEXT,
+        claims JSONB NOT NULL DEFAULT '[]',
+        format VARCHAR(50) NOT NULL DEFAULT 'presentation-exchange',
+        category VARCHAR(100) DEFAULT 'general',
+        version VARCHAR(50) DEFAULT '1.0.0',
+        tags JSONB DEFAULT '[]',
+        status VARCHAR(20) NOT NULL DEFAULT 'draft',
+        vdr_uri VARCHAR(500),
+        author_name VARCHAR(255),
+        author_email VARCHAR(255),
+        github_user_id VARCHAR(255),
+        github_username VARCHAR(255),
+        cloned_from UUID,
+        created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW() NOT NULL,
+        published_at TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_proof_templates_github_user ON proof_templates(github_user_id);
+      CREATE INDEX IF NOT EXISTS idx_proof_templates_status ON proof_templates(status);
+      CREATE INDEX IF NOT EXISTS idx_proof_templates_category ON proof_templates(category);
     `);
 
     console.log('Forms Builder: Database tables initialized');
