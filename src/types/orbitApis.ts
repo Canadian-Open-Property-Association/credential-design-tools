@@ -97,11 +97,31 @@ export const API_SETTINGS_SCHEMA: Record<OrbitApiType, { fields: SettingField[] 
 };
 
 /**
+ * Configuration for a single endpoint's behavior
+ */
+export interface EndpointConfig {
+  enabled: boolean;
+  defaultParams?: Record<string, unknown>;
+  featureToggles?: Record<string, boolean>;
+}
+
+/**
+ * Version-specific configuration bundle
+ */
+export interface VersionConfig {
+  version: string;
+  configuredAt: string;
+  endpoints: Record<string, EndpointConfig>; // keyed by operationId or "METHOD:path"
+}
+
+/**
  * Configuration for a single API endpoint
  */
 export interface ApiConfig {
   baseUrl: string;
   settings?: ApiSettings;
+  versionConfigs?: Record<string, VersionConfig>; // keyed by version
+  currentVersion?: string;
 }
 
 /**
@@ -164,4 +184,124 @@ export function getEmptyApisConfig(): ApisConfig {
     issuer: { baseUrl: '', settings: {} },
     chat: { baseUrl: '', settings: {} },
   };
+}
+
+// ============================================
+// Swagger/OpenAPI Integration Types
+// ============================================
+
+/**
+ * HTTP methods supported in OpenAPI specs
+ */
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+
+/**
+ * Parameter location in OpenAPI spec
+ */
+export type ParameterLocation = 'path' | 'query' | 'header' | 'body';
+
+/**
+ * OpenAPI parameter definition
+ */
+export interface SwaggerParameter {
+  name: string;
+  in: ParameterLocation;
+  required: boolean;
+  type?: string;
+  description?: string;
+  default?: unknown;
+  schema?: {
+    type?: string;
+    format?: string;
+    items?: unknown;
+    $ref?: string;
+  };
+}
+
+/**
+ * Parsed endpoint from OpenAPI spec
+ */
+export interface SwaggerEndpoint {
+  path: string;
+  method: HttpMethod;
+  operationId?: string;
+  summary?: string;
+  description?: string;
+  tags?: string[];
+  parameters?: SwaggerParameter[];
+  requestBody?: {
+    required?: boolean;
+    description?: string;
+    contentType?: string;
+  };
+  responses?: Record<string, { description?: string }>;
+}
+
+/**
+ * API metadata from OpenAPI info block
+ */
+export interface SwaggerInfo {
+  title: string;
+  version: string;
+  description?: string;
+}
+
+/**
+ * Complete parsed OpenAPI spec
+ */
+export interface ParsedSwaggerSpec {
+  info: SwaggerInfo;
+  endpoints: SwaggerEndpoint[];
+  fetchedAt: string;
+  rawSpec?: unknown;
+}
+
+// ============================================
+// Extended API Configuration Types
+// ============================================
+
+/**
+ * Extended API configuration with Swagger spec
+ * (versionConfigs and currentVersion are already in ApiConfig)
+ */
+export interface ExtendedApiConfig extends ApiConfig {
+  swagger?: ParsedSwaggerSpec;
+}
+
+/**
+ * Map of all extended API configurations
+ */
+export type ExtendedApisConfig = Record<OrbitApiType, ExtendedApiConfig>;
+
+/**
+ * Selection type for Orbit APIs secondary navigation
+ */
+export type OrbitApiSelection = OrbitApiType | 'credentials' | null;
+
+/**
+ * Generate a unique key for an endpoint (used for endpoint config lookup)
+ */
+export function getEndpointKey(endpoint: SwaggerEndpoint): string {
+  return endpoint.operationId || `${endpoint.method}:${endpoint.path}`;
+}
+
+/**
+ * Group endpoints by their tags
+ */
+export function groupEndpointsByTag(
+  endpoints: SwaggerEndpoint[]
+): Record<string, SwaggerEndpoint[]> {
+  const grouped: Record<string, SwaggerEndpoint[]> = {};
+
+  endpoints.forEach((endpoint) => {
+    const tags = endpoint.tags?.length ? endpoint.tags : ['Untagged'];
+    tags.forEach((tag) => {
+      if (!grouped[tag]) {
+        grouped[tag] = [];
+      }
+      grouped[tag].push(endpoint);
+    });
+  });
+
+  return grouped;
 }

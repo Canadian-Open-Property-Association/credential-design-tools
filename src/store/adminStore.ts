@@ -6,6 +6,9 @@ import {
   SettingsSection,
   ApisConfig,
   ApiSettings,
+  ParsedSwaggerSpec,
+  OrbitApiSelection,
+  EndpointConfig,
 } from '../types/orbitApis';
 import type { TenantConfig } from '../types/tenantConfig';
 
@@ -132,6 +135,14 @@ interface AdminState {
   apiTestResults: Partial<Record<OrbitApiType, OrbitTestResult>>;
   apiTestLoading: Partial<Record<OrbitApiType, boolean>>;
 
+  // Orbit APIs secondary navigation
+  selectedOrbitApi: OrbitApiSelection;
+
+  // Swagger specs cache
+  swaggerSpecs: Partial<Record<OrbitApiType, ParsedSwaggerSpec>>;
+  swaggerLoading: Partial<Record<OrbitApiType, boolean>>;
+  swaggerError: Partial<Record<OrbitApiType, string>>;
+
   checkAdminStatus: () => Promise<void>;
   fetchLogs: (filters?: LogFilters, page?: number) => Promise<void>;
   setFilters: (filters: LogFilters) => void;
@@ -156,6 +167,21 @@ interface AdminState {
   testApiConnection: (apiType: OrbitApiType, baseUrl?: string) => Promise<OrbitTestResult>;
   resetOrbitConfig: () => Promise<void>;
   clearApiTestResult: (apiType: OrbitApiType) => void;
+
+  // Orbit APIs secondary navigation actions
+  setSelectedOrbitApi: (api: OrbitApiSelection) => void;
+
+  // Swagger actions
+  fetchSwaggerSpec: (apiType: OrbitApiType, baseUrl: string) => Promise<void>;
+  clearSwaggerSpec: (apiType: OrbitApiType) => void;
+
+  // Endpoint configuration actions
+  saveEndpointConfig: (
+    apiType: OrbitApiType,
+    version: string,
+    endpointKey: string,
+    config: EndpointConfig
+  ) => Promise<boolean>;
 
   // Legacy methods for backwards compatibility
   updateOrbitConfig: (config: OrbitConfigInput) => Promise<boolean>;
@@ -225,6 +251,14 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   // Per-API test results
   apiTestResults: {},
   apiTestLoading: {},
+
+  // Orbit APIs secondary navigation
+  selectedOrbitApi: null,
+
+  // Swagger specs cache
+  swaggerSpecs: {},
+  swaggerLoading: {},
+  swaggerError: {},
 
   // Legacy test result state
   orbitTestResult: null,
@@ -354,6 +388,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   // Settings navigation
   setSelectedSection: (section: SettingsSection) => {
     set({ selectedSection: section });
+    // Reset selectedOrbitApi when navigating away from orbit
+    if (section !== 'orbit') {
+      set({ selectedOrbitApi: null });
+    }
     // Also update legacy activeTab for backwards compat
     if (section === 'logs') {
       set({ activeTab: 'logs' });
@@ -563,6 +601,93 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set((state) => ({
       apiTestResults: { ...state.apiTestResults, [apiType]: undefined },
     }));
+  },
+
+  // Orbit APIs secondary navigation
+  setSelectedOrbitApi: (api: OrbitApiSelection) => {
+    set({ selectedOrbitApi: api });
+  },
+
+  // Swagger actions
+  fetchSwaggerSpec: async (apiType: OrbitApiType, baseUrl: string) => {
+    set((state) => ({
+      swaggerLoading: { ...state.swaggerLoading, [apiType]: true },
+      swaggerError: { ...state.swaggerError, [apiType]: undefined },
+    }));
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/admin/orbit-api/${apiType}/swagger`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ baseUrl }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch Swagger spec');
+      }
+
+      const data = await response.json();
+      set((state) => ({
+        swaggerSpecs: { ...state.swaggerSpecs, [apiType]: data },
+        swaggerLoading: { ...state.swaggerLoading, [apiType]: false },
+      }));
+    } catch (error) {
+      set((state) => ({
+        swaggerLoading: { ...state.swaggerLoading, [apiType]: false },
+        swaggerError: {
+          ...state.swaggerError,
+          [apiType]: error instanceof Error ? error.message : 'Unknown error',
+        },
+      }));
+    }
+  },
+
+  clearSwaggerSpec: (apiType: OrbitApiType) => {
+    set((state) => ({
+      swaggerSpecs: { ...state.swaggerSpecs, [apiType]: undefined },
+      swaggerError: { ...state.swaggerError, [apiType]: undefined },
+    }));
+  },
+
+  // Endpoint configuration actions
+  saveEndpointConfig: async (
+    apiType: OrbitApiType,
+    version: string,
+    endpointKey: string,
+    config: EndpointConfig
+  ) => {
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/admin/orbit-api/${apiType}/endpoint-config`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ version, endpointKey, config }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save endpoint config');
+      }
+
+      // Refetch orbit config to get updated version configs
+      await get().fetchOrbitConfig();
+      return true;
+    } catch (error) {
+      console.error('Failed to save endpoint config:', error);
+      return false;
+    }
   },
 
   // Legacy methods for backwards compatibility

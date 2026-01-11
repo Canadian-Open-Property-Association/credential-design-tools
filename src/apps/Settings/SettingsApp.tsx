@@ -1,15 +1,19 @@
 import { useEffect } from 'react';
 import { useAdminStore } from '../../store/adminStore';
 import { useAppTracking } from '../../hooks/useAppTracking';
+import { OrbitApiType, ORBIT_API_KEYS } from '../../types/orbitApis';
 import FilterPanel from './components/FilterPanel';
 import LogsTable from './components/LogsTable';
 import Pagination from './components/Pagination';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import SettingsSidebar from './components/SettingsSidebar';
-import OrbitConfigPanel from './components/OrbitConfigPanel';
+// OrbitConfigPanel kept for potential fallback, but new design uses OrbitApisSidebar + OrbitApiDetail
 import EcosystemConfigPanel from './components/EcosystemConfigPanel';
 import GitHubVdrConfigPanel from './components/GitHubVdrConfigPanel';
 import AppsConfigPanel from './components/AppsConfigPanel';
+import OrbitApisSidebar from './components/OrbitApisSidebar';
+import CredentialsPanel from './components/CredentialsPanel';
+import OrbitApiDetail from './components/OrbitApiDetail';
 
 export default function SettingsApp() {
   // Track app access
@@ -28,6 +32,7 @@ export default function SettingsApp() {
     setFilters,
     clearFilters,
     selectedSection,
+    selectedOrbitApi,
   } = useAdminStore();
 
   // Fetch initial data on mount
@@ -74,9 +79,49 @@ export default function SettingsApp() {
       return <AppsConfigPanel />;
     }
 
-    // Orbit APIs panel
+    // Orbit APIs panel - new two-column layout
     if (selectedSection === 'orbit') {
-      return <OrbitConfigPanel />;
+      return (
+        <div className="flex h-full">
+          {/* Secondary Sidebar */}
+          <OrbitApisSidebar />
+
+          {/* Orbit Content Panel */}
+          <div className="flex-1 overflow-auto">
+            {selectedOrbitApi === 'credentials' ? (
+              <CredentialsPanel />
+            ) : selectedOrbitApi && ORBIT_API_KEYS.includes(selectedOrbitApi as OrbitApiType) ? (
+              <OrbitApiDetail apiType={selectedOrbitApi as OrbitApiType} />
+            ) : (
+              // Default welcome view when no API is selected
+              <div className="p-6 max-w-2xl">
+                <div className="text-center py-12">
+                  <svg
+                    className="w-16 h-16 text-gray-300 mx-auto mb-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
+                    />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Orbit API Configuration</h3>
+                  <p className="text-gray-500 mb-4">
+                    Configure your Orbit API connections and endpoints.
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    Select an item from the sidebar to get started.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
     }
 
     // Analytics dashboard

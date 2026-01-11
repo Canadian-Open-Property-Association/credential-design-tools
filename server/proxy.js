@@ -1298,6 +1298,185 @@ app.delete('/api/admin/orbit-config', requireProjectAuth, requireAdmin, (req, re
 });
 
 // =============================================================================
+// Swagger/OpenAPI Spec Fetching (for Orbit APIs)
+// =============================================================================
+
+/**
+ * Parse OpenAPI/Swagger spec into our simplified format
+ */
+function parseSwaggerSpec(rawSpec, fetchedAt) {
+  const info = {
+    title: rawSpec.info?.title || 'Unknown API',
+    version: rawSpec.info?.version || '1.0',
+    description: rawSpec.info?.description || '',
+  };
+
+  const endpoints = [];
+  const paths = rawSpec.paths || {};
+
+  for (const [pathStr, pathItem] of Object.entries(paths)) {
+    const methods = ['get', 'post', 'put', 'delete', 'patch'];
+
+    for (const method of methods) {
+      const operation = pathItem[method];
+      if (!operation) continue;
+
+      // Parse parameters
+      const parameters = [];
+      const allParams = [...(pathItem.parameters || []), ...(operation.parameters || [])];
+
+      for (const param of allParams) {
+        parameters.push({
+          name: param.name,
+          in: param.in,
+          required: param.required || false,
+          type: param.schema?.type || param.type || 'string',
+          description: param.description || '',
+          default: param.default,
+        });
+      }
+
+      // Parse request body (OpenAPI 3.x)
+      let requestBody = undefined;
+      if (operation.requestBody) {
+        const contentTypes = Object.keys(operation.requestBody.content || {});
+        requestBody = {
+          required: operation.requestBody.required || false,
+          description: operation.requestBody.description || '',
+          contentType: contentTypes[0] || 'application/json',
+        };
+      }
+
+      // Parse responses
+      const responses = {};
+      for (const [code, resp] of Object.entries(operation.responses || {})) {
+        responses[code] = {
+          description: resp.description || '',
+        };
+      }
+
+      endpoints.push({
+        path: pathStr,
+        method: method.toUpperCase(),
+        operationId: operation.operationId,
+        summary: operation.summary || '',
+        description: operation.description || '',
+        tags: operation.tags || [],
+        parameters,
+        requestBody,
+        responses,
+      });
+    }
+  }
+
+  return {
+    info,
+    endpoints,
+    fetchedAt,
+    rawSpec,
+  };
+}
+
+// Fetch and parse Swagger/OpenAPI spec for an Orbit API
+app.post('/api/admin/orbit-api/:apiType/swagger', requireProjectAuth, requireAdmin, async (req, res) => {
+  try {
+    const { apiType } = req.params;
+    const { baseUrl } = req.body;
+
+    if (!VALID_ORBIT_API_TYPES.includes(apiType)) {
+      return res.status(400).json({ error: `Invalid API type: ${apiType}` });
+    }
+
+    if (!baseUrl) {
+      return res.status(400).json({ error: 'baseUrl is required' });
+    }
+
+    // Construct the Swagger spec URL (Orbit APIs use /api/docs-json)
+    const swaggerUrl = `${baseUrl.replace(/\/$/, '')}/api/docs-json`;
+
+    console.log(`Fetching Swagger spec from: ${swaggerUrl}`);
+
+    const response = await fetch(swaggerUrl, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'copa-apps-swagger-loader',
+      },
+      timeout: 10000,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Swagger spec: ${response.status} ${response.statusText}`);
+    }
+
+    const rawSpec = await response.json();
+    const fetchedAt = new Date().toISOString();
+    const parsedSpec = parseSwaggerSpec(rawSpec, fetchedAt);
+
+    // Log the fetch
+    const username = req.session?.user?.login || 'unknown';
+    logAccess(req.session?.user?.id || 'unknown', username, `orbit_api_${apiType}_swagger_fetch`, 'settings');
+
+    res.json(parsedSpec);
+  } catch (error) {
+    console.error('Error fetching Swagger spec:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save endpoint configuration for an Orbit API
+app.put('/api/admin/orbit-api/:apiType/endpoint-config', requireProjectAuth, requireAdmin, (req, res) => {
+  try {
+    const { apiType } = req.params;
+    const { version, endpointKey, config } = req.body;
+
+    if (!VALID_ORBIT_API_TYPES.includes(apiType)) {
+      return res.status(400).json({ error: `Invalid API type: ${apiType}` });
+    }
+
+    if (!version || !endpointKey || !config) {
+      return res.status(400).json({ error: 'version, endpointKey, and config are required' });
+    }
+
+    // Get current config and update version configs
+    const orbitConfig = getOrbitConfig();
+    if (!orbitConfig) {
+      return res.status(400).json({ error: 'Orbit configuration not found' });
+    }
+
+    // Initialize version configs structure if needed
+    if (!orbitConfig.apis) orbitConfig.apis = {};
+    if (!orbitConfig.apis[apiType]) orbitConfig.apis[apiType] = { baseUrl: '' };
+    if (!orbitConfig.apis[apiType].versionConfigs) orbitConfig.apis[apiType].versionConfigs = {};
+
+    // Get or create version config
+    if (!orbitConfig.apis[apiType].versionConfigs[version]) {
+      orbitConfig.apis[apiType].versionConfigs[version] = {
+        version,
+        configuredAt: new Date().toISOString(),
+        endpoints: {},
+      };
+    }
+
+    // Update the specific endpoint config
+    orbitConfig.apis[apiType].versionConfigs[version].endpoints[endpointKey] = config;
+    orbitConfig.apis[apiType].versionConfigs[version].configuredAt = new Date().toISOString();
+    orbitConfig.apis[apiType].currentVersion = version;
+
+    // Save the updated config
+    const username = req.session?.user?.login || 'unknown';
+    const result = saveOrbitConfig(orbitConfig, username);
+
+    // Log the change
+    logAccess(req.session?.user?.id || 'unknown', username, `orbit_api_${apiType}_endpoint_config_update`, 'settings');
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving endpoint config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// =============================================================================
 // Orbit Config Service (for apps to consume)
 // =============================================================================
 
