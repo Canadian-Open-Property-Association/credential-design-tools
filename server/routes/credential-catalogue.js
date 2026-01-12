@@ -451,7 +451,12 @@ router.post('/', async (req, res) => {
     res.status(201).json(credential);
   } catch (err) {
     console.error('[CredentialCatalogue] Failed to import credential:', err);
-    res.status(500).json({ error: 'Failed to import credential' });
+    // Return the actual error message for debugging
+    const errorMessage = err.message || 'Failed to import credential';
+    res.status(500).json({
+      error: errorMessage,
+      details: err.message
+    });
   }
 });
 
