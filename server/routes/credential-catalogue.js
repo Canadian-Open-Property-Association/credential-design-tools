@@ -30,8 +30,17 @@ const getDataDir = () => {
 const getCredentialsFile = () => path.join(getDataDir(), 'credentials.json');
 const getTagsFile = () => path.join(getDataDir(), 'tags.json');
 
+// Default ecosystem tags (all deletable by user)
+const DEFAULT_ECOSYSTEM_TAGS = [
+  { id: 'bc-digital-trust', name: 'BC Digital Trust' },
+  { id: 'sovrin', name: 'Sovrin' },
+  { id: 'candy', name: 'CANdy' },
+  { id: 'indicio', name: 'Indicio' },
+  { id: 'other', name: 'Other' },
+];
+
 /**
- * Ensure storage files exist
+ * Ensure storage files exist with defaults
  */
 const ensureStorage = () => {
   const credFile = getCredentialsFile();
@@ -41,7 +50,8 @@ const ensureStorage = () => {
     fs.writeFileSync(credFile, '[]', 'utf-8');
   }
   if (!fs.existsSync(tagsFile)) {
-    fs.writeFileSync(tagsFile, '[]', 'utf-8');
+    // Initialize with default tags
+    fs.writeFileSync(tagsFile, JSON.stringify(DEFAULT_ECOSYSTEM_TAGS, null, 2), 'utf-8');
   }
 };
 
@@ -334,7 +344,7 @@ router.post('/tags', (req, res) => {
 
 /**
  * DELETE /api/credential-catalogue/tags/:id
- * Remove a custom ecosystem tag
+ * Remove an ecosystem tag
  */
 router.delete('/tags/:id', (req, res) => {
   try {

@@ -18,8 +18,7 @@ import {
   parseJsonSchema,
   flattenSchemaProperties,
 } from '../../../types/vct';
-import type { CatalogueCredential } from '../../../types/catalogue';
-import { PREDEFINED_ECOSYSTEM_TAGS } from '../../../types/catalogue';
+import type { CatalogueCredential, EcosystemTag } from '../../../types/catalogue';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5174';
 
@@ -64,6 +63,7 @@ export default function CredentialFieldConfig({ field, onUpdate }: CredentialFie
   // Catalogue state
   const [catalogueCredentials, setCatalogueCredentials] = useState<CatalogueCredential[]>([]);
   const [selectedCatalogueCredential, setSelectedCatalogueCredential] = useState<CatalogueCredential | null>(null);
+  const [ecosystemTags, setEcosystemTags] = useState<EcosystemTag[]>([]);
 
   // Loading states
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
@@ -128,16 +128,23 @@ export default function CredentialFieldConfig({ field, onUpdate }: CredentialFie
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/api/credential-catalogue`, {
-        credentials: 'include',
-      });
+      // Fetch both credentials and tags in parallel
+      const [credResponse, tagsResponse] = await Promise.all([
+        fetch(`${API_BASE}/api/credential-catalogue`, { credentials: 'include' }),
+        fetch(`${API_BASE}/api/credential-catalogue/tags`, { credentials: 'include' }),
+      ]);
 
-      if (!response.ok) {
+      if (!credResponse.ok) {
         throw new Error('Failed to fetch credential catalogue');
       }
 
-      const data = await response.json();
+      const data = await credResponse.json();
       setCatalogueCredentials(data);
+
+      if (tagsResponse.ok) {
+        const tags = await tagsResponse.json();
+        setEcosystemTags(tags);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load credential catalogue');
     } finally {
@@ -298,7 +305,7 @@ export default function CredentialFieldConfig({ field, onUpdate }: CredentialFie
 
   // Helper to get ecosystem tag name
   const getEcosystemTagName = (tagId: string) => {
-    return PREDEFINED_ECOSYSTEM_TAGS.find(t => t.id === tagId)?.name || tagId;
+    return ecosystemTags.find(t => t.id === tagId)?.name || tagId;
   };
 
   // Group catalogue credentials by ecosystem

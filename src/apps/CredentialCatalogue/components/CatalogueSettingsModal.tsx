@@ -7,7 +7,6 @@
 
 import { useState, useEffect } from 'react';
 import { useCatalogueStore } from '../../../store/catalogueStore';
-import { PREDEFINED_ECOSYSTEM_TAGS, EcosystemTag } from '../../../types/catalogue';
 
 interface CatalogueSettingsModalProps {
   onClose: () => void;
@@ -36,7 +35,6 @@ export default function CatalogueSettingsModal({ onClose }: CatalogueSettingsMod
   const { ecosystemTags, fetchTags, addCustomTag, deleteTag } = useCatalogueStore();
 
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('ecosystem-tags');
-  const [customTags, setCustomTags] = useState<EcosystemTag[]>([]);
   const [newTagName, setNewTagName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,12 +43,6 @@ export default function CatalogueSettingsModal({ onClose }: CatalogueSettingsMod
   useEffect(() => {
     fetchTags();
   }, [fetchTags]);
-
-  // Filter to get custom tags (not predefined)
-  useEffect(() => {
-    const custom = ecosystemTags.filter((t) => !t.isPredefined);
-    setCustomTags(custom);
-  }, [ecosystemTags]);
 
   // Generate ID from name
   const generateId = (name: string) => {
@@ -68,7 +60,7 @@ export default function CatalogueSettingsModal({ onClose }: CatalogueSettingsMod
 
     const id = generateId(newTagName);
 
-    // Check for duplicates (including predefined)
+    // Check for duplicates
     if (ecosystemTags.some((t) => t.id === id)) {
       setError('An ecosystem tag with this name already exists');
       return;
@@ -86,7 +78,7 @@ export default function CatalogueSettingsModal({ onClose }: CatalogueSettingsMod
     }
   };
 
-  // Delete custom tag
+  // Delete tag
   const handleDeleteTag = async (id: string) => {
     setIsSaving(true);
     setError(null);
@@ -188,42 +180,24 @@ export default function CatalogueSettingsModal({ onClose }: CatalogueSettingsMod
                   <div>
                     <h3 className="text-base font-medium text-gray-900">Ecosystem Tags</h3>
                     <p className="text-sm text-gray-500 mt-1">
-                      Manage the ecosystem tags used to categorize imported credentials. Predefined
-                      tags cannot be removed, but you can add custom tags.
+                      Manage the ecosystem tags used to categorize imported credentials.
                     </p>
                   </div>
 
-                  {/* Predefined Tags */}
+                  {/* All Tags */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Predefined Tags</h4>
-                    <div className="space-y-2">
-                      {PREDEFINED_ECOSYSTEM_TAGS.map((tag) => (
-                        <div
-                          key={tag.id}
-                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                        >
-                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800">
-                            {tag.name}
-                          </span>
-                          <span className="text-xs text-gray-400 font-mono">{tag.id}</span>
-                          <span className="ml-auto text-xs text-gray-400 italic">Built-in</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">
+                      Tags ({ecosystemTags.length})
+                    </h4>
 
-                  {/* Custom Tags */}
-                  <div className="border-t border-gray-200 pt-6">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Custom Tags</h4>
-
-                    {customTags.length > 0 ? (
+                    {ecosystemTags.length > 0 ? (
                       <div className="space-y-2 mb-4">
-                        {customTags.map((tag) => (
+                        {ecosystemTags.map((tag) => (
                           <div
                             key={tag.id}
                             className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                           >
-                            <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded bg-purple-100 text-purple-800">
                               {tag.name}
                             </span>
                             <span className="text-xs text-gray-400 font-mono">{tag.id}</span>
@@ -252,7 +226,7 @@ export default function CatalogueSettingsModal({ onClose }: CatalogueSettingsMod
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500 mb-4">
-                        No custom tags yet. Add one below.
+                        No tags yet. Add one below.
                       </p>
                     )}
 

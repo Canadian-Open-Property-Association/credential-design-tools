@@ -13,7 +13,7 @@ import type {
   ParsedSchemaData,
   ParsedCredDefData,
 } from '../types/catalogue';
-import { PREDEFINED_ECOSYSTEM_TAGS } from '../types/catalogue';
+import { DEFAULT_ECOSYSTEM_TAGS } from '../types/catalogue';
 
 const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:5174';
 
@@ -74,7 +74,7 @@ interface CatalogueState {
 export const useCatalogueStore = create<CatalogueState>((set, get) => ({
   // Initial state
   credentials: [],
-  ecosystemTags: PREDEFINED_ECOSYSTEM_TAGS,
+  ecosystemTags: DEFAULT_ECOSYSTEM_TAGS,
   isLoading: false,
   error: null,
   errorDetails: null,
@@ -338,16 +338,16 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
       });
 
       if (!response.ok) {
-        // If tags endpoint doesn't exist yet, use predefined only
-        set({ ecosystemTags: PREDEFINED_ECOSYSTEM_TAGS });
+        // If tags endpoint fails, use defaults as fallback
+        set({ ecosystemTags: DEFAULT_ECOSYSTEM_TAGS });
         return;
       }
 
-      const customTags = await response.json();
-      set({ ecosystemTags: [...PREDEFINED_ECOSYSTEM_TAGS, ...customTags] });
+      const tags = await response.json();
+      set({ ecosystemTags: tags });
     } catch {
-      // Fall back to predefined tags
-      set({ ecosystemTags: PREDEFINED_ECOSYSTEM_TAGS });
+      // Fall back to default tags
+      set({ ecosystemTags: DEFAULT_ECOSYSTEM_TAGS });
     }
   },
 

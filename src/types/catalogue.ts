@@ -85,20 +85,17 @@ export interface EcosystemTag {
 
   /** Display name */
   name: string;
-
-  /** Whether this is a system-defined tag */
-  isPredefined: boolean;
 }
 
 /**
- * Predefined ecosystem tags
+ * Default ecosystem tags (can be deleted by user)
  */
-export const PREDEFINED_ECOSYSTEM_TAGS: EcosystemTag[] = [
-  { id: 'bc-digital-trust', name: 'BC Digital Trust', isPredefined: true },
-  { id: 'sovrin', name: 'Sovrin', isPredefined: true },
-  { id: 'candy', name: 'CANdy', isPredefined: true },
-  { id: 'indicio', name: 'Indicio', isPredefined: true },
-  { id: 'other', name: 'Other', isPredefined: true },
+export const DEFAULT_ECOSYSTEM_TAGS: EcosystemTag[] = [
+  { id: 'bc-digital-trust', name: 'BC Digital Trust' },
+  { id: 'sovrin', name: 'Sovrin' },
+  { id: 'candy', name: 'CANdy' },
+  { id: 'indicio', name: 'Indicio' },
+  { id: 'other', name: 'Other' },
 ];
 
 /**

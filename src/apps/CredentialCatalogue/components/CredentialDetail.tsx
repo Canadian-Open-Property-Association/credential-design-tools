@@ -8,7 +8,6 @@
 import { useState, useEffect } from 'react';
 import { useCatalogueStore } from '../../../store/catalogueStore';
 import type { CatalogueCredential } from '../../../types/catalogue';
-import { PREDEFINED_ECOSYSTEM_TAGS } from '../../../types/catalogue';
 
 interface CredentialDetailProps {
   credential: CatalogueCredential;
@@ -45,8 +44,7 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
     setIsEditingTag(false);
   }, [credential.id, credential.ecosystemTag]);
 
-  const ecosystemTag = ecosystemTags.find((t) => t.id === credential.ecosystemTag) ||
-    PREDEFINED_ECOSYSTEM_TAGS.find((t) => t.id === credential.ecosystemTag);
+  const ecosystemTag = ecosystemTags.find((t) => t.id === credential.ecosystemTag);
 
   const handleSaveTag = async () => {
     if (selectedTagId === credential.ecosystemTag) {

@@ -8,13 +8,12 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCatalogueStore } from '../../../store/catalogueStore';
 import type { CatalogueCredential } from '../../../types/catalogue';
-import { PREDEFINED_ECOSYSTEM_TAGS } from '../../../types/catalogue';
 
 function CredentialCard({ credential }: { credential: CatalogueCredential }) {
   const navigate = useNavigate();
-  const { deleteCredential } = useCatalogueStore();
+  const { deleteCredential, ecosystemTags } = useCatalogueStore();
 
-  const ecosystemTag = PREDEFINED_ECOSYSTEM_TAGS.find((t) => t.id === credential.ecosystemTag);
+  const ecosystemTag = ecosystemTags.find((t) => t.id === credential.ecosystemTag);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();

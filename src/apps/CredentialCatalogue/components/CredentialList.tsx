@@ -8,7 +8,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useCatalogueStore } from '../../../store/catalogueStore';
 import type { CatalogueCredential } from '../../../types/catalogue';
-import { PREDEFINED_ECOSYSTEM_TAGS } from '../../../types/catalogue';
 
 interface CredentialListProps {
   onAddCredential: () => void;
@@ -23,6 +22,8 @@ export default function CredentialList({ onAddCredential, onOpenSettings }: Cred
     searchQuery,
     setSearchQuery,
     fetchCredentials,
+    ecosystemTags,
+    fetchTags,
     isLoading,
     error,
   } = useCatalogueStore();
@@ -31,10 +32,11 @@ export default function CredentialList({ onAddCredential, onOpenSettings }: Cred
   const listContainerRef = useRef<HTMLDivElement>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
-  // Fetch credentials on mount
+  // Fetch credentials and tags on mount
   useEffect(() => {
     fetchCredentials();
-  }, [fetchCredentials]);
+    fetchTags();
+  }, [fetchCredentials, fetchTags]);
 
   // Auto-scroll to selected credential when it changes
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function CredentialList({ onAddCredential, onOpenSettings }: Cred
 
   // Get ecosystem tag label
   const getEcosystemLabel = (tagId: string): string => {
-    const tag = PREDEFINED_ECOSYSTEM_TAGS.find((t) => t.id === tagId);
+    const tag = ecosystemTags.find((t) => t.id === tagId);
     return tag?.name || tagId;
   };
 
@@ -249,7 +251,7 @@ export default function CredentialList({ onAddCredential, onOpenSettings }: Cred
             {groupedCredentials.orderedTags.map((tagId) => {
               const credentialsInGroup = groupedCredentials.groups[tagId];
               const isCollapsed = collapsedSections.has(tagId);
-              const ecosystemTag = PREDEFINED_ECOSYSTEM_TAGS.find((t) => t.id === tagId);
+              const ecosystemTag = ecosystemTags.find((t) => t.id === tagId);
               const sectionLabel = ecosystemTag?.name || tagId;
 
               return (
