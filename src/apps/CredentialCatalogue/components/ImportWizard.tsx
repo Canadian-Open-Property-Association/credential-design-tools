@@ -2,17 +2,21 @@
  * Import Wizard Component
  *
  * Step-by-step wizard for importing credentials from IndyScan URLs.
+ * Displayed as a modal overlay.
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useCatalogueStore } from '../../../store/catalogueStore';
 import { PREDEFINED_ECOSYSTEM_TAGS } from '../../../types/catalogue';
 
 type WizardStep = 'schema' | 'creddef' | 'details' | 'confirm';
 
-export default function ImportWizard() {
-  const navigate = useNavigate();
+interface ImportWizardProps {
+  onClose: () => void;
+  onComplete: (credentialId: string) => void;
+}
+
+export default function ImportWizard({ onClose, onComplete }: ImportWizardProps) {
   const {
     isLoading,
     error,
@@ -64,7 +68,7 @@ export default function ImportWizard() {
 
     try {
       clearError();
-      await importCredential({
+      const credential = await importCredential({
         schemaData: parsedSchema,
         credDefData: parsedCredDef,
         ecosystemTagId,
@@ -73,7 +77,7 @@ export default function ImportWizard() {
         credDefSourceUrl: credDefUrl,
         registerWithOrbit,
       });
-      navigate('/apps/credential-catalogue');
+      onComplete(credential.id);
     } catch {
       // Error is handled in store
     }
@@ -82,7 +86,7 @@ export default function ImportWizard() {
   const handleCancel = () => {
     clearParsedData();
     clearError();
-    navigate('/apps/credential-catalogue');
+    onClose();
   };
 
   const handleBack = () => {
@@ -97,23 +101,27 @@ export default function ImportWizard() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <button
-          onClick={handleCancel}
-          className="flex items-center gap-1 text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Catalogue
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900">Import Credential</h1>
-        <p className="text-gray-600 mt-1">
-          Import a credential from an Indy ledger using IndyScan URLs
-        </p>
-      </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold text-gray-900">Import Credential</h1>
+              <button
+                onClick={handleCancel}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                title="Close"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-gray-600">
+              Import a credential from an Indy ledger using IndyScan URLs
+            </p>
+          </div>
 
       {/* Progress Steps */}
       <div className="flex items-center gap-2 mb-8">
@@ -463,6 +471,8 @@ export default function ImportWizard() {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

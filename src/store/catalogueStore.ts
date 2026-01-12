@@ -29,6 +29,8 @@ interface CatalogueState {
   // UI state
   isLoading: boolean;
   error: string | null;
+  selectedCredential: CatalogueCredential | null;
+  searchQuery: string;
 
   // Import wizard state
   parsedSchema: ParsedSchemaData | null;
@@ -42,6 +44,9 @@ interface CatalogueState {
   importCredential: (request: ImportCredentialRequest) => Promise<CatalogueCredential>;
   deleteCredential: (id: string) => Promise<void>;
   getCredentialById: (id: string) => CatalogueCredential | undefined;
+  selectCredential: (id: string) => void;
+  clearSelection: () => void;
+  setSearchQuery: (query: string) => void;
 
   // Actions - Parsing
   parseSchemaUrl: (url: string) => Promise<ParsedSchemaData>;
@@ -66,6 +71,8 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
   ecosystemTags: PREDEFINED_ECOSYSTEM_TAGS,
   isLoading: false,
   error: null,
+  selectedCredential: null,
+  searchQuery: '',
   parsedSchema: null,
   parsedCredDef: null,
   orbitStatus: null,
@@ -154,6 +161,22 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
   // Get credential by ID
   getCredentialById: (id: string) => {
     return get().credentials.find((c) => c.id === id);
+  },
+
+  // Select a credential
+  selectCredential: (id: string) => {
+    const credential = get().credentials.find((c) => c.id === id);
+    set({ selectedCredential: credential || null });
+  },
+
+  // Clear selection
+  clearSelection: () => {
+    set({ selectedCredential: null });
+  },
+
+  // Set search query
+  setSearchQuery: (query: string) => {
+    set({ searchQuery: query });
   },
 
   // Parse an IndyScan schema URL
