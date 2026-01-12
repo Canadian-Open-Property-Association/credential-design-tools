@@ -24,13 +24,19 @@ function formatDateTime(dateString: string): string {
   });
 }
 
-// Parse Orbit error to extract structured details
-function parseOrbitError(errorString: string): {
+// Parsed error structure with all possible fields
+interface ParsedOrbitError {
   summary: string;
   statusCode?: number;
-  details?: Record<string, unknown>;
+  details?: Record<string, unknown> | null;
   rawResponse?: string;
-} {
+  requestUrl?: string;
+  requestPayload?: Record<string, unknown>;
+  failedStep?: 'schema' | 'creddef';
+}
+
+// Parse Orbit error to extract structured details
+function parseOrbitError(errorString: string): ParsedOrbitError {
   // Pattern: "Failed to import schema to Orbit: 400 - {...json...}"
   const match = errorString.match(/^(.*?):\s*(\d+)\s*-\s*(.*)$/);
   if (match) {
@@ -269,7 +275,40 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
 
           {credential.orbitRegistrationError ? (
             (() => {
-              const parsedError = parseOrbitError(credential.orbitRegistrationError);
+              // Use structured error details if available, otherwise parse from legacy string
+              const errorDetails = credential.orbitRegistrationErrorDetails;
+              const parsedError: ParsedOrbitError = errorDetails
+                ? {
+                    summary: (() => {
+                      // Try to extract message from response body
+                      try {
+                        const parsed = JSON.parse(errorDetails.responseBody || '{}');
+                        return parsed.message || errorDetails.message;
+                      } catch {
+                        return errorDetails.message;
+                      }
+                    })(),
+                    statusCode: errorDetails.statusCode,
+                    requestUrl: errorDetails.requestUrl,
+                    requestPayload: errorDetails.requestPayload,
+                    rawResponse: errorDetails.responseBody,
+                    failedStep: errorDetails.failedStep,
+                    details: (() => {
+                      try {
+                        return JSON.parse(errorDetails.responseBody || '{}');
+                      } catch {
+                        return null;
+                      }
+                    })(),
+                  }
+                : parseOrbitError(credential.orbitRegistrationError);
+
+              const hasDetails =
+                parsedError.statusCode ||
+                parsedError.rawResponse ||
+                parsedError.requestUrl ||
+                parsedError.requestPayload;
+
               return (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg overflow-hidden">
                   <div className="p-3">
@@ -290,7 +329,7 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
                       <div className="flex-1">
                         <p className="text-sm font-medium text-yellow-800">Registration Failed</p>
                         <p className="text-xs text-yellow-700 mt-1">{parsedError.summary}</p>
-                        {(parsedError.statusCode || parsedError.rawResponse) && (
+                        {hasDetails && (
                           <button
                             onClick={() => setShowErrorDetails(!showErrorDetails)}
                             className="mt-2 text-xs text-yellow-600 hover:text-yellow-800 flex items-center gap-1"
@@ -311,25 +350,56 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
                   </div>
 
                   {/* Expandable Error Details */}
-                  {showErrorDetails && (parsedError.statusCode || parsedError.rawResponse) && (
-                    <div className="border-t border-yellow-200 bg-yellow-100/50 p-3 space-y-2">
-                      {parsedError.statusCode && (
+                  {showErrorDetails && hasDetails && (
+                    <div className="border-t border-yellow-200 bg-yellow-100/50 p-3 space-y-3">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {parsedError.statusCode && (
+                          <div>
+                            <span className="text-yellow-700 font-medium">Status Code:</span>
+                            <span className="ml-2 text-yellow-800">{parsedError.statusCode}</span>
+                          </div>
+                        )}
+                        {parsedError.failedStep && (
+                          <div>
+                            <span className="text-yellow-700 font-medium">Failed Step:</span>
+                            <span className="ml-2 text-yellow-800">
+                              {parsedError.failedStep === 'schema' ? 'Schema Import' : 'Cred Def Import'}
+                            </span>
+                          </div>
+                        )}
+                        {(() => {
+                          const errorType = parsedError.details?.error;
+                          if (!errorType) return null;
+                          return (
+                            <div className="col-span-2">
+                              <span className="text-yellow-700 font-medium">Error Type:</span>
+                              <span className="ml-2 text-yellow-800">{String(errorType)}</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {parsedError.requestUrl && (
                         <div className="text-xs">
-                          <span className="text-yellow-700 font-medium">Status Code:</span>
-                          <span className="ml-2 text-yellow-800">{parsedError.statusCode}</span>
+                          <span className="text-yellow-700 font-medium">Request URL:</span>
+                          <code className="block mt-1 p-2 bg-white rounded border border-yellow-200 text-yellow-800 text-xs font-mono break-all">
+                            POST {parsedError.requestUrl}
+                          </code>
                         </div>
                       )}
-                      {parsedError.details && (
+
+                      {parsedError.requestPayload && (
                         <div className="text-xs">
-                          <span className="text-yellow-700 font-medium">Error Type:</span>
-                          <span className="ml-2 text-yellow-800">
-                            {String(parsedError.details.error || 'Unknown')}
-                          </span>
+                          <span className="text-yellow-700 font-medium">Request Payload:</span>
+                          <pre className="mt-1 p-2 bg-white rounded border border-yellow-200 text-yellow-800 text-xs font-mono overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap">
+                            {JSON.stringify(parsedError.requestPayload, null, 2)}
+                          </pre>
                         </div>
                       )}
+
                       {parsedError.rawResponse && (
                         <div className="text-xs">
-                          <span className="text-yellow-700 font-medium">Full Response:</span>
+                          <span className="text-yellow-700 font-medium">Response Body:</span>
                           <pre className="mt-1 p-2 bg-white rounded border border-yellow-200 text-yellow-800 text-xs font-mono overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap">
                             {(() => {
                               try {

@@ -174,7 +174,18 @@ const registerSchemaWithOrbit = async (schemaData) => {
     console.error('[CredentialCatalogue]   - 404: Wrong LOB ID or endpoint path');
     console.error('[CredentialCatalogue]   - 422: LOB role may not have permission to store schemas (check if LOB is configured as Holder vs Issuer/Verifier)');
     console.error('[CredentialCatalogue] ==========================================');
-    throw new Error(`Failed to import schema to Orbit: ${response.status} - ${errorText}`);
+
+    // Create structured error with request details
+    const error = new Error(`Failed to import schema to Orbit: ${response.status} - ${errorText}`);
+    error.errorDetails = {
+      message: error.message,
+      statusCode: response.status,
+      requestUrl: url,
+      requestPayload: payload,
+      responseBody: errorText,
+      failedStep: 'schema',
+    };
+    throw error;
   }
 
   const result = await response.json();
@@ -262,7 +273,18 @@ const registerCredDefWithOrbit = async (credDefData, orbitSchemaId) => {
     console.error('[CredentialCatalogue]   - 404: Wrong LOB ID, schema ID, or endpoint path');
     console.error('[CredentialCatalogue]   - 422: LOB role may not have permission, or schema not found');
     console.error('[CredentialCatalogue] ==========================================');
-    throw new Error(`Failed to import credential definition to Orbit: ${response.status} - ${errorText}`);
+
+    // Create structured error with request details
+    const error = new Error(`Failed to import credential definition to Orbit: ${response.status} - ${errorText}`);
+    error.errorDetails = {
+      message: error.message,
+      statusCode: response.status,
+      requestUrl: url,
+      requestPayload: payload,
+      responseBody: errorText,
+      failedStep: 'creddef',
+    };
+    throw error;
   }
 
   const result = await response.json();
@@ -425,6 +447,7 @@ router.post('/', async (req, res) => {
       orbitSchemaId: null,
       orbitCredDefId: null,
       orbitRegistrationError: null,
+      orbitRegistrationErrorDetails: null,
     };
 
     // Register with Orbit if requested
@@ -447,8 +470,12 @@ router.post('/', async (req, res) => {
         console.log('[CredentialCatalogue] Successfully imported to Orbit');
       } catch (orbitErr) {
         console.error('[CredentialCatalogue] Orbit import failed:', orbitErr.message);
-        // Store the error but still save the credential
+        // Store the error message (legacy) and detailed error info
         credential.orbitRegistrationError = orbitErr.message;
+        // Store structured error details if available
+        if (orbitErr.errorDetails) {
+          credential.orbitRegistrationErrorDetails = orbitErr.errorDetails;
+        }
       }
     }
 

@@ -47,8 +47,24 @@ export interface CatalogueCredential {
   /** ID returned from Orbit credential definition store */
   orbitCredDefId?: string;
 
-  /** Error message if Orbit registration failed */
+  /** Error message if Orbit registration failed (legacy string format) */
   orbitRegistrationError?: string;
+
+  /** Detailed error info if Orbit registration failed */
+  orbitRegistrationErrorDetails?: {
+    /** Error summary message */
+    message: string;
+    /** HTTP status code */
+    statusCode?: number;
+    /** The API endpoint URL that was called */
+    requestUrl?: string;
+    /** The payload sent to Orbit */
+    requestPayload?: Record<string, unknown>;
+    /** The raw response body from Orbit */
+    responseBody?: string;
+    /** Which step failed: 'schema' or 'creddef' */
+    failedStep?: 'schema' | 'creddef';
+  };
 
   // === Metadata ===
 
