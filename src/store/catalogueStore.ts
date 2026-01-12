@@ -9,6 +9,7 @@ import type {
   CatalogueCredential,
   EcosystemTag,
   ImportCredentialRequest,
+  ImportErrorDetails,
   ParsedSchemaData,
   ParsedCredDefData,
 } from '../types/catalogue';
@@ -29,6 +30,7 @@ interface CatalogueState {
   // UI state
   isLoading: boolean;
   error: string | null;
+  errorDetails: ImportErrorDetails | null;
   selectedCredential: CatalogueCredential | null;
   searchQuery: string;
 
@@ -75,6 +77,7 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
   ecosystemTags: PREDEFINED_ECOSYSTEM_TAGS,
   isLoading: false,
   error: null,
+  errorDetails: null,
   selectedCredential: null,
   searchQuery: '',
   parsedSchema: null,
@@ -105,9 +108,28 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
 
   // Import a new credential
   importCredential: async (request: ImportCredentialRequest) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, errorDetails: null });
+    const requestUrl = `${API_BASE}/api/credential-catalogue`;
+    const requestPayload = {
+      schemaData: {
+        name: request.schemaData.name,
+        version: request.schemaData.version,
+        schemaId: request.schemaData.schemaId,
+        ledger: request.schemaData.ledger,
+        attributeCount: request.schemaData.attributes.length,
+      },
+      credDefData: {
+        credDefId: request.credDefData.credDefId,
+        schemaId: request.credDefData.schemaId,
+        tag: request.credDefData.tag,
+      },
+      ecosystemTagId: request.ecosystemTagId,
+      issuerName: request.issuerName,
+      registerWithOrbit: request.registerWithOrbit,
+    };
+
     try {
-      const response = await fetch(`${API_BASE}/api/credential-catalogue`, {
+      const response = await fetch(requestUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -115,8 +137,31 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to import credential');
+        const responseText = await response.text();
+        let errorMessage = 'Failed to import credential';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          // Use raw response text if not JSON
+        }
+
+        const errorDetails: ImportErrorDetails = {
+          message: errorMessage,
+          statusCode: response.status,
+          requestUrl,
+          requestMethod: 'POST',
+          requestPayload,
+          responseBody: responseText,
+          timestamp: new Date().toISOString(),
+        };
+
+        set({
+          error: errorMessage,
+          errorDetails,
+          isLoading: false,
+        });
+        throw new Error(errorMessage);
       }
 
       const credential = await response.json();
@@ -125,13 +170,18 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
         isLoading: false,
         parsedSchema: null,
         parsedCredDef: null,
+        errorDetails: null,
       }));
       return credential;
     } catch (err) {
-      set({
-        error: err instanceof Error ? err.message : 'Failed to import credential',
-        isLoading: false,
-      });
+      // Only set error if not already set (for non-HTTP errors)
+      const currentState = get();
+      if (!currentState.errorDetails) {
+        set({
+          error: err instanceof Error ? err.message : 'Failed to import credential',
+          isLoading: false,
+        });
+      }
       throw err;
     }
   },
@@ -378,5 +428,5 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
   },
 
   // Clear error
-  clearError: () => set({ error: null }),
+  clearError: () => set({ error: null, errorDetails: null }),
 }));

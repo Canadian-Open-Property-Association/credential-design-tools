@@ -191,7 +191,6 @@ export default function EntityManagerApp() {
         <EntityToolbar
           onExport={handleExport}
           onSaveToRepo={() => setShowSaveToRepoModal(true)}
-          onOpenSettings={() => setShowSettingsModal(true)}
         />
       </div>
 
@@ -200,7 +199,7 @@ export default function EntityManagerApp() {
         <div className="flex-1 flex overflow-hidden p-4 gap-4">
           {/* Left Panel - Entity List */}
           <div className="w-80 flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-            <EntityList onAddEntity={handleAddEntity} />
+            <EntityList onAddEntity={handleAddEntity} onOpenSettings={() => setShowSettingsModal(true)} />
           </div>
 
           {/* Right Panel - Detail View */}
@@ -224,7 +223,7 @@ export default function EntityManagerApp() {
         <div className="flex-1 flex overflow-hidden p-4 gap-4">
           {/* Left Panel - Entity List */}
           <div className="w-80 flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-            <EntityList onAddEntity={handleAddEntity} />
+            <EntityList onAddEntity={handleAddEntity} onOpenSettings={() => setShowSettingsModal(true)} />
           </div>
 
           {/* Right Panel - Ecosystem View */}

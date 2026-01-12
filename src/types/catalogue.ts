@@ -180,6 +180,32 @@ export interface ImportCredentialRequest {
 }
 
 /**
+ * Detailed error information for debugging failed imports
+ */
+export interface ImportErrorDetails {
+  /** Error message */
+  message: string;
+
+  /** HTTP status code if applicable */
+  statusCode?: number;
+
+  /** The URL that was called */
+  requestUrl?: string;
+
+  /** HTTP method used */
+  requestMethod?: string;
+
+  /** Request payload (sanitized - no secrets) */
+  requestPayload?: Record<string, unknown>;
+
+  /** Response body from the server */
+  responseBody?: string;
+
+  /** Timestamp of the error */
+  timestamp: string;
+}
+
+/**
  * Response from parsing an IndyScan URL
  */
 export interface ParseIndyScanResponse {
