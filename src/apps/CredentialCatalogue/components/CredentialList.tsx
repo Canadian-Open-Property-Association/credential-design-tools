@@ -22,6 +22,8 @@ export default function CredentialList({ onAddCredential }: CredentialListProps)
     searchQuery,
     setSearchQuery,
     fetchCredentials,
+    isLoading,
+    error,
   } = useCatalogueStore();
 
   const credentialRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -152,8 +154,43 @@ export default function CredentialList({ onAddCredential }: CredentialListProps)
         </div>
       </div>
 
-      {/* Empty state */}
-      {filteredCredentials.length === 0 ? (
+      {/* Loading state */}
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center text-gray-400 p-4">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+            <p className="text-sm">Loading credentials...</p>
+          </div>
+        </div>
+      ) : error ? (
+        /* Error state */
+        <div className="flex-1 flex items-center justify-center text-gray-400 p-4">
+          <div className="text-center">
+            <svg
+              className="w-12 h-12 mx-auto mb-3 text-red-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <p className="text-sm font-medium text-red-600">Error loading credentials</p>
+            <p className="text-xs mt-1 text-gray-500">{error}</p>
+            <button
+              onClick={() => fetchCredentials()}
+              className="mt-2 text-xs text-blue-600 hover:text-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : filteredCredentials.length === 0 ? (
+        /* Empty state */
         <div className="flex-1 flex items-center justify-center text-gray-400 p-4">
           <div className="text-center">
             <svg

@@ -23,21 +23,13 @@ import ImportWizard from './components/ImportWizard';
 export default function CredentialCatalogueApp() {
   useAppTracking('credential-catalogue', 'Credential Catalogue');
 
-  const {
-    fetchCredentials,
-    selectedCredential,
-    clearSelection,
-    isLoading,
-    error,
-    selectCredential,
-  } = useCatalogueStore();
+  const { selectedCredential, clearSelection, selectCredential } = useCatalogueStore();
 
   const [showImportWizard, setShowImportWizard] = useState(false);
 
-  // Reset to initial state when entering the app
+  // Reset selection when entering the app (CredentialList handles fetching)
   useEffect(() => {
     clearSelection();
-    fetchCredentials();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddCredential = () => {
@@ -76,34 +68,6 @@ export default function CredentialCatalogueApp() {
 
     return <CredentialDetail credential={selectedCredential} />;
   };
-
-  if (isLoading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading credentials...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center text-red-600">
-          <p className="text-lg font-medium">Error loading credentials</p>
-          <p className="text-sm mt-1">{error}</p>
-          <button
-            onClick={() => fetchCredentials()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
