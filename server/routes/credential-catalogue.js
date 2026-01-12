@@ -87,6 +87,17 @@ const writeTags = (tags) => {
  */
 const registerSchemaWithOrbit = async (schemaData) => {
   const orbitConfig = getOrbitApiConfig('credentialMgmt');
+
+  // Debug: Log Orbit config (mask API key)
+  console.log('[CredentialCatalogue] ====== ORBIT SCHEMA IMPORT DEBUG ======');
+  console.log('[CredentialCatalogue] Orbit Config:', {
+    hasConfig: !!orbitConfig,
+    baseUrl: orbitConfig?.baseUrl || 'NOT SET',
+    lobId: orbitConfig?.lobId || 'NOT SET',
+    hasApiKey: !!orbitConfig?.apiKey,
+    apiKeyPreview: orbitConfig?.apiKey ? `${orbitConfig.apiKey.substring(0, 8)}...` : 'NOT SET',
+  });
+
   if (!orbitConfig) {
     throw new Error('Orbit Credential Management API not configured. Please configure it in Settings → Orbit Configuration.');
   }
@@ -111,28 +122,55 @@ const registerSchemaWithOrbit = async (schemaData) => {
   };
 
   const url = `${normalizedBaseUrl}/api/lob/${lobId}/schema/store`;
-  console.log('[CredentialCatalogue] Importing schema to Orbit:', schemaData.schemaId);
-  console.log('[CredentialCatalogue] Request URL:', url);
-  console.log('[CredentialCatalogue] Payload:', JSON.stringify(payload, null, 2));
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(apiKey && { 'api-key': apiKey }),
+  };
+
+  // Debug: Log full request details
+  console.log('[CredentialCatalogue] Schema Import Request:');
+  console.log('[CredentialCatalogue]   URL:', url);
+  console.log('[CredentialCatalogue]   Method: POST');
+  console.log('[CredentialCatalogue]   Headers:', {
+    'Content-Type': headers['Content-Type'],
+    'api-key': headers['api-key'] ? `${headers['api-key'].substring(0, 8)}...` : 'NOT SET',
+  });
+  console.log('[CredentialCatalogue]   Payload:', JSON.stringify(payload, null, 2));
+  console.log('[CredentialCatalogue]   Schema Data Received:', {
+    schemaId: schemaData.schemaId,
+    name: schemaData.name,
+    version: schemaData.version,
+    attributeCount: schemaData.attributes?.length || 0,
+  });
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(apiKey && { 'api-key': apiKey }),
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
+  // Debug: Log response details
+  console.log('[CredentialCatalogue] Schema Import Response:');
+  console.log('[CredentialCatalogue]   Status:', response.status, response.statusText);
+  console.log('[CredentialCatalogue]   Headers:', Object.fromEntries(response.headers.entries()));
+
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[CredentialCatalogue] Orbit schema import failed:', response.status, errorText);
+    console.error('[CredentialCatalogue] ====== ORBIT SCHEMA IMPORT FAILED ======');
+    console.error('[CredentialCatalogue] Status:', response.status);
+    console.error('[CredentialCatalogue] Error Body:', errorText);
+    console.error('[CredentialCatalogue] Possible causes:');
+    console.error('[CredentialCatalogue]   - 401/403: API key invalid or missing permissions');
+    console.error('[CredentialCatalogue]   - 404: Wrong LOB ID or endpoint path');
+    console.error('[CredentialCatalogue]   - 422: LOB role may not have permission to store schemas (check if LOB is configured as Holder vs Issuer/Verifier)');
+    console.error('[CredentialCatalogue] ==========================================');
     throw new Error(`Failed to import schema to Orbit: ${response.status} - ${errorText}`);
   }
 
   const result = await response.json();
-  // Response: { success: true, message: "...", data: { schemaId: 1, schemaState: "available", schemaLedgerId: "..." } }
-  console.log('[CredentialCatalogue] Schema imported to Orbit:', JSON.stringify(result, null, 2));
+  console.log('[CredentialCatalogue] ====== ORBIT SCHEMA IMPORT SUCCESS ======');
+  console.log('[CredentialCatalogue] Response:', JSON.stringify(result, null, 2));
+  console.log('[CredentialCatalogue] ==========================================');
   return result;
 };
 
@@ -144,6 +182,17 @@ const registerSchemaWithOrbit = async (schemaData) => {
  */
 const registerCredDefWithOrbit = async (credDefData, orbitSchemaId) => {
   const orbitConfig = getOrbitApiConfig('credentialMgmt');
+
+  // Debug: Log Orbit config (mask API key)
+  console.log('[CredentialCatalogue] ====== ORBIT CRED DEF IMPORT DEBUG ======');
+  console.log('[CredentialCatalogue] Orbit Config:', {
+    hasConfig: !!orbitConfig,
+    baseUrl: orbitConfig?.baseUrl || 'NOT SET',
+    lobId: orbitConfig?.lobId || 'NOT SET',
+    hasApiKey: !!orbitConfig?.apiKey,
+  });
+  console.log('[CredentialCatalogue] Orbit Schema ID (from schema import):', orbitSchemaId);
+
   if (!orbitConfig) {
     throw new Error('Orbit Credential Management API not configured. Please configure it in Settings → Orbit Configuration.');
   }
@@ -167,28 +216,49 @@ const registerCredDefWithOrbit = async (credDefData, orbitSchemaId) => {
   };
 
   const url = `${normalizedBaseUrl}/api/lob/${lobId}/cred-def/store`;
-  console.log('[CredentialCatalogue] Importing credential definition to Orbit:', credDefData.credDefId);
-  console.log('[CredentialCatalogue] Request URL:', url);
-  console.log('[CredentialCatalogue] Payload:', JSON.stringify(payload, null, 2));
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(apiKey && { 'api-key': apiKey }),
+  };
+
+  // Debug: Log full request details
+  console.log('[CredentialCatalogue] Cred Def Import Request:');
+  console.log('[CredentialCatalogue]   URL:', url);
+  console.log('[CredentialCatalogue]   Method: POST');
+  console.log('[CredentialCatalogue]   Payload:', JSON.stringify(payload, null, 2));
+  console.log('[CredentialCatalogue]   Cred Def Data Received:', {
+    credDefId: credDefData.credDefId,
+    name: credDefData.name,
+    tag: credDefData.tag,
+  });
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(apiKey && { 'api-key': apiKey }),
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
+  // Debug: Log response details
+  console.log('[CredentialCatalogue] Cred Def Import Response:');
+  console.log('[CredentialCatalogue]   Status:', response.status, response.statusText);
+
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[CredentialCatalogue] Orbit cred def import failed:', response.status, errorText);
+    console.error('[CredentialCatalogue] ====== ORBIT CRED DEF IMPORT FAILED ======');
+    console.error('[CredentialCatalogue] Status:', response.status);
+    console.error('[CredentialCatalogue] Error Body:', errorText);
+    console.error('[CredentialCatalogue] Possible causes:');
+    console.error('[CredentialCatalogue]   - 401/403: API key invalid or missing permissions');
+    console.error('[CredentialCatalogue]   - 404: Wrong LOB ID, schema ID, or endpoint path');
+    console.error('[CredentialCatalogue]   - 422: LOB role may not have permission, or schema not found');
+    console.error('[CredentialCatalogue] ==========================================');
     throw new Error(`Failed to import credential definition to Orbit: ${response.status} - ${errorText}`);
   }
 
   const result = await response.json();
-  // Response: { success: true, message: "...", data: { credentialDefinitionId: "...", credentialId: 1 } }
-  console.log('[CredentialCatalogue] Credential definition imported to Orbit:', JSON.stringify(result, null, 2));
+  console.log('[CredentialCatalogue] ====== ORBIT CRED DEF IMPORT SUCCESS ======');
+  console.log('[CredentialCatalogue] Response:', JSON.stringify(result, null, 2));
+  console.log('[CredentialCatalogue] ==========================================');
   return result;
 };
 
