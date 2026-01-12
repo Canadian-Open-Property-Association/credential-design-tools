@@ -24,6 +24,36 @@ function formatDateTime(dateString: string): string {
   });
 }
 
+// Parse Orbit error to extract structured details
+function parseOrbitError(errorString: string): {
+  summary: string;
+  statusCode?: number;
+  details?: Record<string, unknown>;
+  rawResponse?: string;
+} {
+  // Pattern: "Failed to import schema to Orbit: 400 - {...json...}"
+  const match = errorString.match(/^(.*?):\s*(\d+)\s*-\s*(.*)$/);
+  if (match) {
+    const [, prefix, status, jsonPart] = match;
+    try {
+      const parsed = JSON.parse(jsonPart);
+      return {
+        summary: parsed.message || prefix,
+        statusCode: parseInt(status, 10),
+        details: parsed,
+        rawResponse: jsonPart,
+      };
+    } catch {
+      return {
+        summary: prefix,
+        statusCode: parseInt(status, 10),
+        rawResponse: jsonPart,
+      };
+    }
+  }
+  return { summary: errorString };
+}
+
 export default function CredentialDetail({ credential }: CredentialDetailProps) {
   const { deleteCredential, clearSelection, updateCredential, ecosystemTags, fetchTags } =
     useCatalogueStore();
@@ -32,6 +62,7 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
   const [isEditingTag, setIsEditingTag] = useState(false);
   const [selectedTagId, setSelectedTagId] = useState(credential.ecosystemTag || 'other');
   const [isUpdatingTag, setIsUpdatingTag] = useState(false);
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
 
   // Fetch tags on mount
   useEffect(() => {
@@ -237,29 +268,84 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
           </h3>
 
           {credential.orbitRegistrationError ? (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <svg
-                  className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-                <div>
-                  <p className="text-sm font-medium text-yellow-800">Registration Failed</p>
-                  <p className="text-xs text-yellow-700 mt-1">
-                    {credential.orbitRegistrationError}
-                  </p>
+            (() => {
+              const parsedError = parseOrbitError(credential.orbitRegistrationError);
+              return (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg overflow-hidden">
+                  <div className="p-3">
+                    <div className="flex items-start gap-2">
+                      <svg
+                        className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-yellow-800">Registration Failed</p>
+                        <p className="text-xs text-yellow-700 mt-1">{parsedError.summary}</p>
+                        {(parsedError.statusCode || parsedError.rawResponse) && (
+                          <button
+                            onClick={() => setShowErrorDetails(!showErrorDetails)}
+                            className="mt-2 text-xs text-yellow-600 hover:text-yellow-800 flex items-center gap-1"
+                          >
+                            <svg
+                              className={`w-3 h-3 transition-transform ${showErrorDetails ? 'rotate-90' : ''}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            {showErrorDetails ? 'Hide' : 'Show'} technical details
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expandable Error Details */}
+                  {showErrorDetails && (parsedError.statusCode || parsedError.rawResponse) && (
+                    <div className="border-t border-yellow-200 bg-yellow-100/50 p-3 space-y-2">
+                      {parsedError.statusCode && (
+                        <div className="text-xs">
+                          <span className="text-yellow-700 font-medium">Status Code:</span>
+                          <span className="ml-2 text-yellow-800">{parsedError.statusCode}</span>
+                        </div>
+                      )}
+                      {parsedError.details && (
+                        <div className="text-xs">
+                          <span className="text-yellow-700 font-medium">Error Type:</span>
+                          <span className="ml-2 text-yellow-800">
+                            {String(parsedError.details.error || 'Unknown')}
+                          </span>
+                        </div>
+                      )}
+                      {parsedError.rawResponse && (
+                        <div className="text-xs">
+                          <span className="text-yellow-700 font-medium">Full Response:</span>
+                          <pre className="mt-1 p-2 bg-white rounded border border-yellow-200 text-yellow-800 text-xs font-mono overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap">
+                            {(() => {
+                              try {
+                                return JSON.stringify(JSON.parse(parsedError.rawResponse), null, 2);
+                              } catch {
+                                return parsedError.rawResponse;
+                              }
+                            })()}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
+              );
+            })()
           ) : credential.orbitSchemaId || credential.orbitCredDefId ? (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <div className="flex items-start gap-2">
