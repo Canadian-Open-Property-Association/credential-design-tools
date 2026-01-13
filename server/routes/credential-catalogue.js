@@ -959,7 +959,7 @@ const createSchemaInOrbit = async (schemaName, schemaVersion, attributes) => {
     credentialFormat: 'ANONCRED',
   };
 
-  const url = `${normalizedBaseUrl}/api/lob/${lobId}/schema`;
+  const url = `${normalizedBaseUrl}/api/lob/${lobId}/schema/register`;
   const headers = {
     'Content-Type': 'application/json',
     ...(apiKey && { 'api-key': apiKey }),

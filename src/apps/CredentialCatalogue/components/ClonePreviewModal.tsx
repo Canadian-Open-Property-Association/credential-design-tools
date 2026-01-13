@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import type { CatalogueCredential } from '../../../types/catalogue';
+import type { CatalogueCredential, ImportErrorDetails } from '../../../types/catalogue';
 
 interface ClonePreviewModalProps {
   credential: CatalogueCredential;
@@ -14,6 +14,7 @@ interface ClonePreviewModalProps {
   onConfirm: (credDefTag: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;
+  errorDetails?: ImportErrorDetails | null;
 }
 
 export default function ClonePreviewModal({
@@ -22,8 +23,10 @@ export default function ClonePreviewModal({
   onConfirm,
   isLoading,
   error,
+  errorDetails,
 }: ClonePreviewModalProps) {
   const [credDefTag, setCredDefTag] = useState('default');
+  const [showErrorDetails, setShowErrorDetails] = useState(false);
 
   const handleConfirm = async () => {
     await onConfirm(credDefTag);
@@ -153,9 +156,59 @@ export default function ClonePreviewModal({
                     d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-red-800">Clone Failed</p>
                   <p className="text-xs text-red-600 mt-1">{error}</p>
+
+                  {/* Show Details Toggle */}
+                  {errorDetails && (
+                    <button
+                      onClick={() => setShowErrorDetails(!showErrorDetails)}
+                      className="mt-2 text-xs text-red-700 hover:text-red-800 underline"
+                    >
+                      {showErrorDetails ? 'Hide API Details' : 'Show API Details'}
+                    </button>
+                  )}
+
+                  {/* Detailed Error Logs */}
+                  {showErrorDetails && errorDetails && (
+                    <div className="mt-3 bg-white/50 rounded border border-red-200 p-3 text-xs font-mono space-y-2">
+                      <div>
+                        <span className="text-gray-500">Timestamp:</span>{' '}
+                        <span className="text-gray-700">{errorDetails.timestamp}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Request URL:</span>{' '}
+                        <span className="text-gray-700 break-all">{errorDetails.requestUrl}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Method:</span>{' '}
+                        <span className="text-gray-700">{errorDetails.requestMethod}</span>
+                      </div>
+                      {errorDetails.statusCode && (
+                        <div>
+                          <span className="text-gray-500">Status Code:</span>{' '}
+                          <span className="text-gray-700">{errorDetails.statusCode}</span>
+                        </div>
+                      )}
+                      {errorDetails.requestPayload && (
+                        <div>
+                          <span className="text-gray-500 block mb-1">Request Payload:</span>
+                          <pre className="text-gray-700 bg-gray-100 p-2 rounded overflow-x-auto text-[10px]">
+                            {JSON.stringify(errorDetails.requestPayload, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                      {errorDetails.responseBody && (
+                        <div>
+                          <span className="text-gray-500 block mb-1">Response Body:</span>
+                          <pre className="text-gray-700 bg-gray-100 p-2 rounded overflow-x-auto text-[10px] max-h-32 overflow-y-auto">
+                            {errorDetails.responseBody}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

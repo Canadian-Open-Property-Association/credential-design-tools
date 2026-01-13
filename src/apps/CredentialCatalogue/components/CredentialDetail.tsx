@@ -181,8 +181,18 @@ function OrbitLogEntry({ title, log, isExpanded, onToggle }: OrbitLogEntryProps)
 type TabType = 'original' | 'cloned';
 
 export default function CredentialDetail({ credential }: CredentialDetailProps) {
-  const { deleteCredential, clearSelection, updateCredential, ecosystemTags, fetchTags, cloneForIssuance, deleteClone, clearError } =
-    useCatalogueStore();
+  const {
+    deleteCredential,
+    clearSelection,
+    updateCredential,
+    ecosystemTags,
+    fetchTags,
+    cloneForIssuance,
+    deleteClone,
+    clearCloneError,
+    cloneError: storeCloneError,
+    cloneErrorDetails: storeCloneErrorDetails,
+  } = useCatalogueStore();
   const { entities, fetchEntities } = useEntityStore();
   const { getLogoUrl, fetchLogos } = useLogoStore();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -197,7 +207,6 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
   const [activeTab, setActiveTab] = useState<TabType>('original');
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
-  const [cloneError, setCloneError] = useState<string | null>(null);
   const [isDeletingClone, setIsDeletingClone] = useState(false);
 
   // Fetch tags and entities on mount
@@ -266,15 +275,13 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
   // Clone for issuance handlers
   const handleCloneForIssuance = async (credDefTag: string) => {
     setIsCloning(true);
-    setCloneError(null);
-    clearError();
+    clearCloneError();
     try {
       await cloneForIssuance(credential.id, credDefTag);
       setShowCloneModal(false);
       setActiveTab('cloned'); // Switch to cloned tab after successful clone
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to clone credential';
-      setCloneError(errorMessage);
+    } catch {
+      // Error is captured in store's cloneError and cloneErrorDetails
     } finally {
       setIsCloning(false);
     }
@@ -1068,11 +1075,12 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
           credential={credential}
           onClose={() => {
             setShowCloneModal(false);
-            setCloneError(null);
+            clearCloneError();
           }}
           onConfirm={handleCloneForIssuance}
           isLoading={isCloning}
-          error={cloneError}
+          error={storeCloneError}
+          errorDetails={storeCloneErrorDetails}
         />
       )}
     </div>

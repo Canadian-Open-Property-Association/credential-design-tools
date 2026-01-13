@@ -35,6 +35,10 @@ interface CatalogueState {
   selectedCredential: CatalogueCredential | null;
   searchQuery: string;
 
+  // Clone-specific error state (separate from main error to avoid showing in credential list)
+  cloneError: string | null;
+  cloneErrorDetails: ImportErrorDetails | null;
+
   // Import wizard state
   parsedSchema: ParsedSchemaData | null;
   parsedCredDef: ParsedCredDefData | null;
@@ -74,6 +78,7 @@ interface CatalogueState {
 
   // Utility
   clearError: () => void;
+  clearCloneError: () => void;
 }
 
 export const useCatalogueStore = create<CatalogueState>((set, get) => ({
@@ -85,6 +90,8 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
   errorDetails: null,
   selectedCredential: null,
   searchQuery: '',
+  cloneError: null,
+  cloneErrorDetails: null,
   parsedSchema: null,
   parsedCredDef: null,
   orbitStatus: null,
@@ -434,7 +441,8 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
 
   // Clone a credential for issuance
   cloneForIssuance: async (credentialId: string, credDefTag?: string) => {
-    set({ isLoading: true, error: null, errorDetails: null });
+    // Use clone-specific error state, not the global error (which shows in credential list)
+    set({ isLoading: true, cloneError: null, cloneErrorDetails: null });
     const requestUrl = `${API_BASE}/api/credential-catalogue/${credentialId}/clone-for-issuance`;
 
     try {
@@ -457,7 +465,7 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
       if (!response.ok) {
         const errorMessage = result.error || 'Failed to clone credential for issuance';
 
-        const errorDetails: ImportErrorDetails = {
+        const cloneErrorDetails: ImportErrorDetails = {
           message: errorMessage,
           statusCode: response.status,
           requestUrl,
@@ -467,9 +475,10 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
           timestamp: new Date().toISOString(),
         };
 
+        // Use clone-specific error state
         set({
-          error: errorMessage,
-          errorDetails,
+          cloneError: errorMessage,
+          cloneErrorDetails,
           isLoading: false,
         });
         throw new Error(errorMessage);
@@ -503,16 +512,16 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
           credentials: updatedCredentials,
           selectedCredential: updatedSelected,
           isLoading: false,
-          errorDetails: null,
+          cloneErrorDetails: null,
         };
       });
 
       return result;
     } catch (err) {
       const currentState = get();
-      if (!currentState.errorDetails) {
+      if (!currentState.cloneErrorDetails) {
         set({
-          error: err instanceof Error ? err.message : 'Failed to clone credential for issuance',
+          cloneError: err instanceof Error ? err.message : 'Failed to clone credential for issuance',
           isLoading: false,
         });
       }
@@ -522,7 +531,8 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
 
   // Delete a clone
   deleteClone: async (credentialId: string) => {
-    set({ isLoading: true, error: null });
+    // Use clone-specific error state to avoid showing in credential list
+    set({ isLoading: true, cloneError: null });
     try {
       const response = await fetch(
         `${API_BASE}/api/credential-catalogue/${credentialId}/clone`,
@@ -570,8 +580,9 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
         };
       });
     } catch (err) {
+      // Use clone-specific error state
       set({
-        error: err instanceof Error ? err.message : 'Failed to delete clone',
+        cloneError: err instanceof Error ? err.message : 'Failed to delete clone',
         isLoading: false,
       });
       throw err;
@@ -580,4 +591,7 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
 
   // Clear error
   clearError: () => set({ error: null, errorDetails: null }),
+
+  // Clear clone error
+  clearCloneError: () => set({ cloneError: null, cloneErrorDetails: null }),
 }));

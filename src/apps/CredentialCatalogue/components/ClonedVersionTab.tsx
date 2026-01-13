@@ -136,33 +136,67 @@ export default function ClonedVersionTab({
 
           {/* Schema Log Details */}
           {showSchemaLog && credential.clonedOrbitSchemaLog && (
-            <div className="bg-white rounded border border-gray-200 p-3 text-xs">
-              <div className="space-y-2">
+            <div className="bg-white rounded border border-gray-200 p-3 text-xs space-y-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <span className="text-gray-500">Status: </span>
                   <span
                     className={
                       credential.clonedOrbitSchemaLog.success
-                        ? 'text-green-600'
-                        : 'text-red-600'
+                        ? 'text-green-600 font-medium'
+                        : 'text-red-600 font-medium'
                     }
                   >
                     {credential.clonedOrbitSchemaLog.success ? 'Success' : 'Failed'}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-500">URL: </span>
-                  <span className="font-mono break-all">
-                    {credential.clonedOrbitSchemaLog.requestUrl}
-                  </span>
-                </div>
                 {credential.clonedOrbitSchemaLog.statusCode && (
                   <div>
                     <span className="text-gray-500">HTTP Status: </span>
-                    <span>{credential.clonedOrbitSchemaLog.statusCode}</span>
+                    <span className="font-medium">{credential.clonedOrbitSchemaLog.statusCode}</span>
                   </div>
                 )}
               </div>
+              {credential.clonedOrbitSchemaLog.timestamp && (
+                <div>
+                  <span className="text-gray-500">Timestamp: </span>
+                  <span>{formatDate(credential.clonedOrbitSchemaLog.timestamp)}</span>
+                </div>
+              )}
+              <div>
+                <span className="text-gray-500">Request URL: </span>
+                <code className="block mt-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono break-all">
+                  POST {credential.clonedOrbitSchemaLog.requestUrl}
+                </code>
+              </div>
+              {credential.clonedOrbitSchemaLog.requestPayload && (
+                <div>
+                  <span className="text-gray-500">Request Payload:</span>
+                  <pre className="mt-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap">
+                    {JSON.stringify(credential.clonedOrbitSchemaLog.requestPayload, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {credential.clonedOrbitSchemaLog.responseBody && (
+                <div>
+                  <span className="text-gray-500">Response Body:</span>
+                  <pre className="mt-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap">
+                    {(() => {
+                      try {
+                        return JSON.stringify(JSON.parse(credential.clonedOrbitSchemaLog.responseBody), null, 2);
+                      } catch {
+                        return credential.clonedOrbitSchemaLog.responseBody;
+                      }
+                    })()}
+                  </pre>
+                </div>
+              )}
+              {credential.clonedOrbitSchemaLog.errorMessage && (
+                <div>
+                  <span className="text-red-600">Error: </span>
+                  <span className="text-red-700">{credential.clonedOrbitSchemaLog.errorMessage}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -188,33 +222,67 @@ export default function ClonedVersionTab({
 
           {/* Cred Def Log Details */}
           {showCredDefLog && credential.clonedOrbitCredDefLog && (
-            <div className="bg-white rounded border border-gray-200 p-3 text-xs">
-              <div className="space-y-2">
+            <div className="bg-white rounded border border-gray-200 p-3 text-xs space-y-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <span className="text-gray-500">Status: </span>
                   <span
                     className={
                       credential.clonedOrbitCredDefLog.success
-                        ? 'text-green-600'
-                        : 'text-red-600'
+                        ? 'text-green-600 font-medium'
+                        : 'text-red-600 font-medium'
                     }
                   >
                     {credential.clonedOrbitCredDefLog.success ? 'Success' : 'Failed'}
                   </span>
                 </div>
-                <div>
-                  <span className="text-gray-500">URL: </span>
-                  <span className="font-mono break-all">
-                    {credential.clonedOrbitCredDefLog.requestUrl}
-                  </span>
-                </div>
                 {credential.clonedOrbitCredDefLog.statusCode && (
                   <div>
                     <span className="text-gray-500">HTTP Status: </span>
-                    <span>{credential.clonedOrbitCredDefLog.statusCode}</span>
+                    <span className="font-medium">{credential.clonedOrbitCredDefLog.statusCode}</span>
                   </div>
                 )}
               </div>
+              {credential.clonedOrbitCredDefLog.timestamp && (
+                <div>
+                  <span className="text-gray-500">Timestamp: </span>
+                  <span>{formatDate(credential.clonedOrbitCredDefLog.timestamp)}</span>
+                </div>
+              )}
+              <div>
+                <span className="text-gray-500">Request URL: </span>
+                <code className="block mt-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono break-all">
+                  POST {credential.clonedOrbitCredDefLog.requestUrl}
+                </code>
+              </div>
+              {credential.clonedOrbitCredDefLog.requestPayload && (
+                <div>
+                  <span className="text-gray-500">Request Payload:</span>
+                  <pre className="mt-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap">
+                    {JSON.stringify(credential.clonedOrbitCredDefLog.requestPayload, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {credential.clonedOrbitCredDefLog.responseBody && (
+                <div>
+                  <span className="text-gray-500">Response Body:</span>
+                  <pre className="mt-1 p-2 bg-gray-50 rounded border border-gray-200 font-mono overflow-x-auto max-h-32 overflow-y-auto whitespace-pre-wrap">
+                    {(() => {
+                      try {
+                        return JSON.stringify(JSON.parse(credential.clonedOrbitCredDefLog.responseBody), null, 2);
+                      } catch {
+                        return credential.clonedOrbitCredDefLog.responseBody;
+                      }
+                    })()}
+                  </pre>
+                </div>
+              )}
+              {credential.clonedOrbitCredDefLog.errorMessage && (
+                <div>
+                  <span className="text-red-600">Error: </span>
+                  <span className="text-red-700">{credential.clonedOrbitCredDefLog.errorMessage}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
