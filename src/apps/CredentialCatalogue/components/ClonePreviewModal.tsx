@@ -173,39 +173,102 @@ export default function ClonePreviewModal({
                   {/* Detailed Error Logs */}
                   {showErrorDetails && errorDetails && (
                     <div className="mt-3 bg-white/50 rounded border border-red-200 p-3 text-xs font-mono space-y-2">
-                      <div>
-                        <span className="text-gray-500">Timestamp:</span>{' '}
-                        <span className="text-gray-700">{errorDetails.timestamp}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Request URL:</span>{' '}
-                        <span className="text-gray-700 break-all">{errorDetails.requestUrl}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Method:</span>{' '}
-                        <span className="text-gray-700">{errorDetails.requestMethod}</span>
-                      </div>
-                      {errorDetails.statusCode && (
-                        <div>
-                          <span className="text-gray-500">Status Code:</span>{' '}
-                          <span className="text-gray-700">{errorDetails.statusCode}</span>
-                        </div>
-                      )}
-                      {errorDetails.requestPayload && (
-                        <div>
-                          <span className="text-gray-500 block mb-1">Request Payload:</span>
-                          <pre className="text-gray-700 bg-gray-100 p-2 rounded overflow-x-auto text-[10px]">
-                            {JSON.stringify(errorDetails.requestPayload, null, 2)}
-                          </pre>
-                        </div>
-                      )}
-                      {errorDetails.responseBody && (
-                        <div>
-                          <span className="text-gray-500 block mb-1">Response Body:</span>
-                          <pre className="text-gray-700 bg-gray-100 p-2 rounded overflow-x-auto text-[10px] max-h-32 overflow-y-auto">
-                            {errorDetails.responseBody}
-                          </pre>
-                        </div>
+                      {/* If we have actual Orbit API log, show that */}
+                      {errorDetails.orbitLog ? (
+                        <>
+                          <div>
+                            <span className="text-gray-500">Timestamp:</span>{' '}
+                            <span className="text-gray-700">{errorDetails.orbitLog.timestamp}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Orbit API URL:</span>{' '}
+                            <span className="text-gray-700 break-all">
+                              {errorDetails.orbitLog.requestUrl}
+                            </span>
+                          </div>
+                          {errorDetails.orbitLog.statusCode && (
+                            <div>
+                              <span className="text-gray-500">Status Code:</span>{' '}
+                              <span className="text-gray-700">{errorDetails.orbitLog.statusCode}</span>
+                            </div>
+                          )}
+                          {errorDetails.orbitLog.errorMessage && (
+                            <div>
+                              <span className="text-gray-500">Error:</span>{' '}
+                              <span className="text-red-700">{errorDetails.orbitLog.errorMessage}</span>
+                            </div>
+                          )}
+                          {errorDetails.orbitLog.requestPayload && (
+                            <div>
+                              <span className="text-gray-500 block mb-1">Request Payload:</span>
+                              <pre className="text-gray-700 bg-gray-100 p-2 rounded overflow-x-auto text-[10px] max-h-40 overflow-y-auto whitespace-pre-wrap">
+                                {JSON.stringify(errorDetails.orbitLog.requestPayload, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                          {errorDetails.orbitLog.responseBody && (
+                            <div>
+                              <span className="text-gray-500 block mb-1">Response Body:</span>
+                              <pre className="text-gray-700 bg-gray-100 p-2 rounded overflow-x-auto text-[10px] max-h-32 overflow-y-auto whitespace-pre-wrap">
+                                {(() => {
+                                  try {
+                                    return JSON.stringify(
+                                      JSON.parse(errorDetails.orbitLog.responseBody!),
+                                      null,
+                                      2
+                                    );
+                                  } catch {
+                                    return errorDetails.orbitLog.responseBody;
+                                  }
+                                })()}
+                              </pre>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        /* Fallback to frontend request details if no Orbit log */
+                        <>
+                          <div>
+                            <span className="text-gray-500">Timestamp:</span>{' '}
+                            <span className="text-gray-700">{errorDetails.timestamp}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Request URL:</span>{' '}
+                            <span className="text-gray-700 break-all">{errorDetails.requestUrl}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Method:</span>{' '}
+                            <span className="text-gray-700">{errorDetails.requestMethod}</span>
+                          </div>
+                          {errorDetails.statusCode && (
+                            <div>
+                              <span className="text-gray-500">Status Code:</span>{' '}
+                              <span className="text-gray-700">{errorDetails.statusCode}</span>
+                            </div>
+                          )}
+                          {errorDetails.requestPayload && (
+                            <div>
+                              <span className="text-gray-500 block mb-1">Request Payload:</span>
+                              <pre className="text-gray-700 bg-gray-100 p-2 rounded overflow-x-auto text-[10px]">
+                                {JSON.stringify(errorDetails.requestPayload, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                          {errorDetails.responseBody && (
+                            <div>
+                              <span className="text-gray-500 block mb-1">Response Body:</span>
+                              <pre className="text-gray-700 bg-gray-100 p-2 rounded overflow-x-auto text-[10px] max-h-32 overflow-y-auto whitespace-pre-wrap">
+                                {(() => {
+                                  try {
+                                    return JSON.stringify(JSON.parse(errorDetails.responseBody), null, 2);
+                                  } catch {
+                                    return errorDetails.responseBody;
+                                  }
+                                })()}
+                              </pre>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}

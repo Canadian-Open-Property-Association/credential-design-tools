@@ -287,6 +287,9 @@ export interface ImportErrorDetails {
 
   /** Timestamp of the error */
   timestamp: string;
+
+  /** Actual Orbit API operation log (for clone errors) */
+  orbitLog?: OrbitOperationLog;
 }
 
 /**
