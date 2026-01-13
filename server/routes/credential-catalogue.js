@@ -892,6 +892,491 @@ const parseCredDefFromHtml = (html, sourceUrl) => {
   return result;
 };
 
+// ============ Clone for Issuance - Orbit API Functions ============
+
+/**
+ * Create a NEW schema in Orbit (not import/store)
+ * This creates a new schema on the agent's ledger (e.g., BCOVRIN-TEST)
+ *
+ * API Endpoint: POST /api/lob/{lob_id}/schema
+ * Reference: https://northern-block.gitbook.io/orbit-enterprise-api-documentation/api-modules/credential-management-api/create-a-schema
+ *
+ * Returns: { log: OrbitOperationLog, orbitSchemaId?: number, ledgerSchemaId?: string }
+ */
+const createSchemaInOrbit = async (schemaName, schemaVersion, attributes) => {
+  const orbitConfig = getOrbitApiConfig('credentialMgmt');
+  const timestamp = new Date().toISOString();
+
+  console.log('[CredentialCatalogue] ====== ORBIT SCHEMA CREATE DEBUG ======');
+  console.log('[CredentialCatalogue] Creating schema:', schemaName, schemaVersion);
+  console.log('[CredentialCatalogue] Attributes count:', attributes.length);
+
+  if (!orbitConfig) {
+    const errorMsg = 'Orbit Credential Management API not configured. Please configure it in Settings → Orbit Configuration.';
+    return {
+      log: {
+        success: false,
+        timestamp,
+        requestUrl: 'N/A - not configured',
+        requestPayload: {},
+        errorMessage: errorMsg,
+      },
+      orbitSchemaId: null,
+      ledgerSchemaId: null,
+    };
+  }
+
+  const { baseUrl, lobId, apiKey } = orbitConfig;
+
+  if (!lobId) {
+    const errorMsg = 'Orbit LOB ID not configured. Please configure it in Settings → Orbit Configuration.';
+    return {
+      log: {
+        success: false,
+        timestamp,
+        requestUrl: 'N/A - LOB ID not set',
+        requestPayload: {},
+        errorMessage: errorMsg,
+      },
+      orbitSchemaId: null,
+      ledgerSchemaId: null,
+    };
+  }
+
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+
+  // Convert attributes array to object format { attributeName: "text", ... }
+  const attributesObject = {};
+  for (const attr of attributes) {
+    attributesObject[attr] = 'text';
+  }
+
+  // Prepare schema creation payload
+  const payload = {
+    schemaName,
+    schemaVersion,
+    attributes: attributesObject,
+    credentialFormat: 'ANONCRED',
+  };
+
+  const url = `${normalizedBaseUrl}/api/lob/${lobId}/schema`;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(apiKey && { 'api-key': apiKey }),
+  };
+
+  console.log('[CredentialCatalogue] Schema Create Request:');
+  console.log('[CredentialCatalogue]   URL:', url);
+  console.log('[CredentialCatalogue]   Method: POST');
+  console.log('[CredentialCatalogue]   Headers:', {
+    'Content-Type': headers['Content-Type'],
+    'api-key': headers['api-key'] ? `${headers['api-key'].substring(0, 8)}...` : 'NOT SET',
+  });
+  console.log('[CredentialCatalogue]   Payload:', JSON.stringify(payload, null, 2));
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    console.log('[CredentialCatalogue] Schema Create Response:');
+    console.log('[CredentialCatalogue]   Status:', response.status, response.statusText);
+    console.log('[CredentialCatalogue]   Headers:', Object.fromEntries(response.headers.entries()));
+
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      result = {};
+    }
+
+    console.log('[CredentialCatalogue]   Body:', responseText);
+
+    if (!response.ok) {
+      console.error('[CredentialCatalogue] ====== ORBIT SCHEMA CREATE FAILED ======');
+      console.error('[CredentialCatalogue] Status:', response.status);
+      console.error('[CredentialCatalogue] Error Body:', responseText);
+      console.error('[CredentialCatalogue] ==========================================');
+
+      return {
+        log: {
+          success: false,
+          timestamp,
+          requestUrl: url,
+          requestPayload: payload,
+          statusCode: response.status,
+          responseBody: responseText,
+          responseData: result,
+          errorMessage: `Failed to create schema in Orbit: ${response.status} - ${result.message || result.error || responseText}`,
+        },
+        orbitSchemaId: null,
+        ledgerSchemaId: null,
+      };
+    }
+
+    console.log('[CredentialCatalogue] ====== ORBIT SCHEMA CREATE SUCCESS ======');
+    console.log('[CredentialCatalogue] Response:', JSON.stringify(result, null, 2));
+    console.log('[CredentialCatalogue] ==========================================');
+
+    // Extract IDs from response
+    const orbitSchemaId = result.data?.schemaId || result.schemaId;
+    const ledgerSchemaId = result.data?.schemaLedgerId || result.schemaLedgerId;
+
+    return {
+      log: {
+        success: true,
+        timestamp,
+        requestUrl: url,
+        requestPayload: payload,
+        statusCode: response.status,
+        responseBody: responseText,
+        responseData: result,
+      },
+      orbitSchemaId,
+      ledgerSchemaId,
+    };
+  } catch (err) {
+    console.error('[CredentialCatalogue] Schema create network error:', err.message);
+    return {
+      log: {
+        success: false,
+        timestamp,
+        requestUrl: url,
+        requestPayload: payload,
+        errorMessage: `Network error: ${err.message}`,
+      },
+      orbitSchemaId: null,
+      ledgerSchemaId: null,
+    };
+  }
+};
+
+/**
+ * Create a NEW credential definition in Orbit
+ * This creates a new cred def on the agent's ledger
+ *
+ * API Endpoint: POST /api/lob/{lob_id}/cred-def
+ * Reference: https://northern-block.gitbook.io/orbit-enterprise-api-documentation/api-modules/credential-management-api/create-a-credential-definition
+ *
+ * Returns: { log: OrbitOperationLog, orbitCredDefId?: number, ledgerCredDefId?: string }
+ */
+const createCredDefInOrbit = async (orbitSchemaId, tag, description) => {
+  const orbitConfig = getOrbitApiConfig('credentialMgmt');
+  const timestamp = new Date().toISOString();
+
+  console.log('[CredentialCatalogue] ====== ORBIT CRED DEF CREATE DEBUG ======');
+  console.log('[CredentialCatalogue] Creating cred def for schema ID:', orbitSchemaId);
+  console.log('[CredentialCatalogue] Tag:', tag);
+
+  if (!orbitConfig) {
+    const errorMsg = 'Orbit Credential Management API not configured.';
+    return {
+      log: {
+        success: false,
+        timestamp,
+        requestUrl: 'N/A - not configured',
+        requestPayload: {},
+        errorMessage: errorMsg,
+      },
+      orbitCredDefId: null,
+      ledgerCredDefId: null,
+    };
+  }
+
+  const { baseUrl, lobId, apiKey } = orbitConfig;
+
+  if (!lobId) {
+    const errorMsg = 'Orbit LOB ID not configured.';
+    return {
+      log: {
+        success: false,
+        timestamp,
+        requestUrl: 'N/A - LOB ID not set',
+        requestPayload: {},
+        errorMessage: errorMsg,
+      },
+      orbitCredDefId: null,
+      ledgerCredDefId: null,
+    };
+  }
+
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
+
+  const payload = {
+    schemaId: orbitSchemaId,
+    tag: tag || 'default',
+    description: description || 'Cloned credential for issuance',
+  };
+
+  const url = `${normalizedBaseUrl}/api/lob/${lobId}/cred-def`;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(apiKey && { 'api-key': apiKey }),
+  };
+
+  console.log('[CredentialCatalogue] Cred Def Create Request:');
+  console.log('[CredentialCatalogue]   URL:', url);
+  console.log('[CredentialCatalogue]   Method: POST');
+  console.log('[CredentialCatalogue]   Headers:', {
+    'Content-Type': headers['Content-Type'],
+    'api-key': headers['api-key'] ? `${headers['api-key'].substring(0, 8)}...` : 'NOT SET',
+  });
+  console.log('[CredentialCatalogue]   Payload:', JSON.stringify(payload, null, 2));
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    console.log('[CredentialCatalogue] Cred Def Create Response:');
+    console.log('[CredentialCatalogue]   Status:', response.status, response.statusText);
+    console.log('[CredentialCatalogue]   Headers:', Object.fromEntries(response.headers.entries()));
+
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      result = {};
+    }
+
+    console.log('[CredentialCatalogue]   Body:', responseText);
+
+    if (!response.ok) {
+      console.error('[CredentialCatalogue] ====== ORBIT CRED DEF CREATE FAILED ======');
+      console.error('[CredentialCatalogue] Status:', response.status);
+      console.error('[CredentialCatalogue] Error Body:', responseText);
+      console.error('[CredentialCatalogue] ==========================================');
+
+      return {
+        log: {
+          success: false,
+          timestamp,
+          requestUrl: url,
+          requestPayload: payload,
+          statusCode: response.status,
+          responseBody: responseText,
+          responseData: result,
+          errorMessage: `Failed to create credential definition in Orbit: ${response.status} - ${result.message || result.error || responseText}`,
+        },
+        orbitCredDefId: null,
+        ledgerCredDefId: null,
+      };
+    }
+
+    console.log('[CredentialCatalogue] ====== ORBIT CRED DEF CREATE SUCCESS ======');
+    console.log('[CredentialCatalogue] Response:', JSON.stringify(result, null, 2));
+    console.log('[CredentialCatalogue] ==========================================');
+
+    // Extract IDs from response
+    const orbitCredDefId = result.data?.credDefId || result.credDefId;
+    const ledgerCredDefId = result.data?.credDefLedgerId || result.credDefLedgerId;
+
+    return {
+      log: {
+        success: true,
+        timestamp,
+        requestUrl: url,
+        requestPayload: payload,
+        statusCode: response.status,
+        responseBody: responseText,
+        responseData: result,
+      },
+      orbitCredDefId,
+      ledgerCredDefId,
+    };
+  } catch (err) {
+    console.error('[CredentialCatalogue] Cred def create network error:', err.message);
+    return {
+      log: {
+        success: false,
+        timestamp,
+        requestUrl: url,
+        requestPayload: payload,
+        errorMessage: `Network error: ${err.message}`,
+      },
+      orbitCredDefId: null,
+      ledgerCredDefId: null,
+    };
+  }
+};
+
+// ============ Clone for Issuance Endpoints ============
+// NOTE: Clone routes MUST come before /:id routes
+
+/**
+ * POST /api/credential-catalogue/:id/clone-for-issuance
+ * Clone an imported credential to create a new issuable version
+ */
+router.post('/:id/clone-for-issuance', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { credDefTag } = req.body;
+
+    console.log('[CredentialCatalogue] ====== CLONE FOR ISSUANCE START ======');
+    console.log('[CredentialCatalogue] Credential ID:', id);
+    console.log('[CredentialCatalogue] Cred Def Tag:', credDefTag || 'default');
+
+    // Find the credential
+    const credentials = readCredentials();
+    const credentialIndex = credentials.findIndex((c) => c.id === id);
+
+    if (credentialIndex === -1) {
+      return res.status(404).json({ error: 'Credential not found' });
+    }
+
+    const credential = credentials[credentialIndex];
+
+    // Check if already cloned
+    if (credential.clonedAt) {
+      return res.status(400).json({
+        error: 'Credential already has a cloned version. Delete the existing clone first.',
+      });
+    }
+
+    // Step 1: Create schema in Orbit
+    console.log('[CredentialCatalogue] Step 1: Creating schema in Orbit...');
+    const schemaResult = await createSchemaInOrbit(
+      credential.name,
+      credential.version,
+      credential.attributes
+    );
+
+    if (!schemaResult.log.success || !schemaResult.orbitSchemaId) {
+      console.error('[CredentialCatalogue] Schema creation failed');
+      return res.status(500).json({
+        success: false,
+        error: schemaResult.log.errorMessage || 'Failed to create schema in Orbit',
+        schemaLog: schemaResult.log,
+      });
+    }
+
+    console.log('[CredentialCatalogue] Schema created - Orbit ID:', schemaResult.orbitSchemaId, ', Ledger ID:', schemaResult.ledgerSchemaId);
+
+    // Step 2: Create credential definition in Orbit
+    console.log('[CredentialCatalogue] Step 2: Creating credential definition in Orbit...');
+    const credDefResult = await createCredDefInOrbit(
+      schemaResult.orbitSchemaId,
+      credDefTag || 'default',
+      `${credential.name} - cloned for issuance`
+    );
+
+    if (!credDefResult.log.success || !credDefResult.orbitCredDefId) {
+      console.error('[CredentialCatalogue] Cred def creation failed');
+      return res.status(500).json({
+        success: false,
+        error: credDefResult.log.errorMessage || 'Failed to create credential definition in Orbit',
+        schemaLog: schemaResult.log,
+        credDefLog: credDefResult.log,
+      });
+    }
+
+    console.log('[CredentialCatalogue] Cred def created - Orbit ID:', credDefResult.orbitCredDefId, ', Ledger ID:', credDefResult.ledgerCredDefId);
+
+    // Step 3: Update the credential record with clone data
+    const clonedAt = new Date().toISOString();
+    const clonedBy = req.session?.user?.email || req.session?.user?.login || 'unknown';
+
+    credentials[credentialIndex] = {
+      ...credential,
+      clonedAt,
+      clonedBy,
+      clonedLedger: 'bcovrin:test', // The agent's configured ledger
+      clonedSchemaId: schemaResult.ledgerSchemaId,
+      clonedCredDefId: credDefResult.ledgerCredDefId,
+      clonedOrbitSchemaId: schemaResult.orbitSchemaId,
+      clonedOrbitCredDefId: credDefResult.orbitCredDefId,
+      clonedOrbitSchemaLog: schemaResult.log,
+      clonedOrbitCredDefLog: credDefResult.log,
+    };
+
+    writeCredentials(credentials);
+
+    console.log('[CredentialCatalogue] ====== CLONE FOR ISSUANCE SUCCESS ======');
+    console.log('[CredentialCatalogue] Cloned credential:', credential.name);
+    console.log('[CredentialCatalogue] New Schema ID:', schemaResult.ledgerSchemaId);
+    console.log('[CredentialCatalogue] New Cred Def ID:', credDefResult.ledgerCredDefId);
+    console.log('[CredentialCatalogue] ==========================================');
+
+    res.json({
+      success: true,
+      clonedLedger: 'bcovrin:test',
+      clonedSchemaId: schemaResult.ledgerSchemaId,
+      clonedCredDefId: credDefResult.ledgerCredDefId,
+      clonedOrbitSchemaId: schemaResult.orbitSchemaId,
+      clonedOrbitCredDefId: credDefResult.orbitCredDefId,
+      schemaLog: schemaResult.log,
+      credDefLog: credDefResult.log,
+    });
+  } catch (err) {
+    console.error('[CredentialCatalogue] Clone for issuance error:', err);
+    res.status(500).json({
+      success: false,
+      error: err.message || 'Failed to clone credential for issuance',
+    });
+  }
+});
+
+/**
+ * DELETE /api/credential-catalogue/:id/clone
+ * Delete the cloned version of a credential
+ */
+router.delete('/:id/clone', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    console.log('[CredentialCatalogue] ====== DELETE CLONE START ======');
+    console.log('[CredentialCatalogue] Credential ID:', id);
+
+    // Find the credential
+    const credentials = readCredentials();
+    const credentialIndex = credentials.findIndex((c) => c.id === id);
+
+    if (credentialIndex === -1) {
+      return res.status(404).json({ error: 'Credential not found' });
+    }
+
+    const credential = credentials[credentialIndex];
+
+    // Check if has clone
+    if (!credential.clonedAt) {
+      return res.status(400).json({ error: 'Credential does not have a cloned version' });
+    }
+
+    // Remove clone fields
+    const {
+      clonedAt,
+      clonedBy,
+      clonedLedger,
+      clonedSchemaId,
+      clonedCredDefId,
+      clonedOrbitSchemaId,
+      clonedOrbitCredDefId,
+      clonedOrbitSchemaLog,
+      clonedOrbitCredDefLog,
+      ...credentialWithoutClone
+    } = credential;
+
+    credentials[credentialIndex] = credentialWithoutClone;
+    writeCredentials(credentials);
+
+    console.log('[CredentialCatalogue] ====== DELETE CLONE SUCCESS ======');
+    console.log('[CredentialCatalogue] Removed clone from:', credential.name);
+    console.log('[CredentialCatalogue] Note: Schema and cred def still exist on ledger');
+    console.log('[CredentialCatalogue] ==========================================');
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('[CredentialCatalogue] Delete clone error:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete clone' });
+  }
+});
+
 // ============ Import Parsing Endpoints ============
 // NOTE: Import routes MUST come before /:id routes
 

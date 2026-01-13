@@ -129,6 +129,35 @@ export interface CatalogueCredential {
 
   /** Who imported the credential (user email or name) */
   importedBy: string;
+
+  // === Clone for Issuance ===
+
+  /** Whether this credential has been cloned for issuance */
+  clonedAt?: string;
+
+  /** Who initiated the clone */
+  clonedBy?: string;
+
+  /** Target ledger where the clone was created (e.g., "bcovrin:test") */
+  clonedLedger?: string;
+
+  /** New schema ID on the target ledger */
+  clonedSchemaId?: string;
+
+  /** New credential definition ID on the target ledger */
+  clonedCredDefId?: string;
+
+  /** Orbit schema ID for the cloned version */
+  clonedOrbitSchemaId?: number;
+
+  /** Orbit credential definition ID for the cloned version */
+  clonedOrbitCredDefId?: number;
+
+  /** Log entry for cloned schema creation in Orbit */
+  clonedOrbitSchemaLog?: OrbitOperationLog;
+
+  /** Log entry for cloned cred def creation in Orbit */
+  clonedOrbitCredDefLog?: OrbitOperationLog;
 }
 
 /**
@@ -282,6 +311,38 @@ export interface LedgerConfig {
 
   /** IndyScan base URL */
   indyscanUrl: string;
+}
+
+/**
+ * Response from cloning a credential for issuance
+ */
+export interface CloneForIssuanceResponse {
+  /** Whether the clone was successful */
+  success: boolean;
+
+  /** New schema ID on the target ledger */
+  clonedSchemaId?: string;
+
+  /** New credential definition ID on the target ledger */
+  clonedCredDefId?: string;
+
+  /** Orbit schema ID for the cloned version */
+  clonedOrbitSchemaId?: number;
+
+  /** Orbit credential definition ID for the cloned version */
+  clonedOrbitCredDefId?: number;
+
+  /** Target ledger where the clone was created */
+  clonedLedger?: string;
+
+  /** Log entry for schema creation */
+  schemaLog?: OrbitOperationLog;
+
+  /** Log entry for cred def creation */
+  credDefLog?: OrbitOperationLog;
+
+  /** Error message if failed */
+  error?: string;
 }
 
 /**

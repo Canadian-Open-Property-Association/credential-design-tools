@@ -12,6 +12,7 @@ import type {
   ImportErrorDetails,
   ParsedSchemaData,
   ParsedCredDefData,
+  CloneForIssuanceResponse,
 } from '../types/catalogue';
 import { DEFAULT_ECOSYSTEM_TAGS } from '../types/catalogue';
 
@@ -66,6 +67,10 @@ interface CatalogueState {
 
   // Actions - Orbit
   fetchOrbitStatus: () => Promise<void>;
+
+  // Actions - Clone for Issuance
+  cloneForIssuance: (credentialId: string, credDefTag?: string) => Promise<CloneForIssuanceResponse>;
+  deleteClone: (credentialId: string) => Promise<void>;
 
   // Utility
   clearError: () => void;
@@ -424,6 +429,152 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
       set({ orbitStatus: status });
     } catch {
       set({ orbitStatus: { configured: false, hasCredentials: false } });
+    }
+  },
+
+  // Clone a credential for issuance
+  cloneForIssuance: async (credentialId: string, credDefTag?: string) => {
+    set({ isLoading: true, error: null, errorDetails: null });
+    const requestUrl = `${API_BASE}/api/credential-catalogue/${credentialId}/clone-for-issuance`;
+
+    try {
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ credDefTag: credDefTag || 'default' }),
+      });
+
+      const responseText = await response.text();
+      let result: CloneForIssuanceResponse;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        throw new Error('Invalid response from server');
+      }
+
+      if (!response.ok) {
+        const errorMessage = result.error || 'Failed to clone credential for issuance';
+
+        const errorDetails: ImportErrorDetails = {
+          message: errorMessage,
+          statusCode: response.status,
+          requestUrl,
+          requestMethod: 'POST',
+          requestPayload: { credDefTag: credDefTag || 'default' },
+          responseBody: responseText,
+          timestamp: new Date().toISOString(),
+        };
+
+        set({
+          error: errorMessage,
+          errorDetails,
+          isLoading: false,
+        });
+        throw new Error(errorMessage);
+      }
+
+      // Update the credential in the store with clone data
+      set((state) => {
+        const updatedCredentials = state.credentials.map((c) => {
+          if (c.id === credentialId) {
+            return {
+              ...c,
+              clonedAt: new Date().toISOString(),
+              clonedLedger: result.clonedLedger,
+              clonedSchemaId: result.clonedSchemaId,
+              clonedCredDefId: result.clonedCredDefId,
+              clonedOrbitSchemaId: result.clonedOrbitSchemaId,
+              clonedOrbitCredDefId: result.clonedOrbitCredDefId,
+              clonedOrbitSchemaLog: result.schemaLog,
+              clonedOrbitCredDefLog: result.credDefLog,
+            };
+          }
+          return c;
+        });
+
+        const updatedSelected =
+          state.selectedCredential?.id === credentialId
+            ? updatedCredentials.find((c) => c.id === credentialId) || null
+            : state.selectedCredential;
+
+        return {
+          credentials: updatedCredentials,
+          selectedCredential: updatedSelected,
+          isLoading: false,
+          errorDetails: null,
+        };
+      });
+
+      return result;
+    } catch (err) {
+      const currentState = get();
+      if (!currentState.errorDetails) {
+        set({
+          error: err instanceof Error ? err.message : 'Failed to clone credential for issuance',
+          isLoading: false,
+        });
+      }
+      throw err;
+    }
+  },
+
+  // Delete a clone
+  deleteClone: async (credentialId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/credential-catalogue/${credentialId}/clone`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to delete clone');
+      }
+
+      // Update the credential in the store to remove clone data
+      set((state) => {
+        const updatedCredentials = state.credentials.map((c) => {
+          if (c.id === credentialId) {
+            const {
+              clonedAt,
+              clonedBy,
+              clonedLedger,
+              clonedSchemaId,
+              clonedCredDefId,
+              clonedOrbitSchemaId,
+              clonedOrbitCredDefId,
+              clonedOrbitSchemaLog,
+              clonedOrbitCredDefLog,
+              ...rest
+            } = c;
+            return rest as CatalogueCredential;
+          }
+          return c;
+        });
+
+        const updatedSelected =
+          state.selectedCredential?.id === credentialId
+            ? updatedCredentials.find((c) => c.id === credentialId) || null
+            : state.selectedCredential;
+
+        return {
+          credentials: updatedCredentials,
+          selectedCredential: updatedSelected,
+          isLoading: false,
+        };
+      });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'Failed to delete clone',
+        isLoading: false,
+      });
+      throw err;
     }
   },
 

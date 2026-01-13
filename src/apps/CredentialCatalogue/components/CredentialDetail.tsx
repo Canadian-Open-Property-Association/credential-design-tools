@@ -11,6 +11,8 @@ import { useCatalogueStore } from '../../../store/catalogueStore';
 import { useEntityStore } from '../../../store/entityStore';
 import { useLogoStore } from '../../../store/logoStore';
 import type { CatalogueCredential, OrbitOperationLog } from '../../../types/catalogue';
+import ClonePreviewModal from './ClonePreviewModal';
+import ClonedVersionTab from './ClonedVersionTab';
 
 interface CredentialDetailProps {
   credential: CatalogueCredential;
@@ -176,8 +178,10 @@ function OrbitLogEntry({ title, log, isExpanded, onToggle }: OrbitLogEntryProps)
   );
 }
 
+type TabType = 'original' | 'cloned';
+
 export default function CredentialDetail({ credential }: CredentialDetailProps) {
-  const { deleteCredential, clearSelection, updateCredential, ecosystemTags, fetchTags } =
+  const { deleteCredential, clearSelection, updateCredential, ecosystemTags, fetchTags, cloneForIssuance, deleteClone, clearError } =
     useCatalogueStore();
   const { entities, fetchEntities } = useEntityStore();
   const { getLogoUrl, fetchLogos } = useLogoStore();
@@ -188,6 +192,13 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
   const [isUpdatingTag, setIsUpdatingTag] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
   const [expandedLogSection, setExpandedLogSection] = useState<'schema' | 'creddef' | null>(null);
+
+  // Clone for issuance state
+  const [activeTab, setActiveTab] = useState<TabType>('original');
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
+  const [cloneError, setCloneError] = useState<string | null>(null);
+  const [isDeletingClone, setIsDeletingClone] = useState(false);
 
   // Fetch tags and entities on mount
   useEffect(() => {
@@ -251,6 +262,38 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
       setIsDeleting(false);
     }
   };
+
+  // Clone for issuance handlers
+  const handleCloneForIssuance = async (credDefTag: string) => {
+    setIsCloning(true);
+    setCloneError(null);
+    clearError();
+    try {
+      await cloneForIssuance(credential.id, credDefTag);
+      setShowCloneModal(false);
+      setActiveTab('cloned'); // Switch to cloned tab after successful clone
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to clone credential';
+      setCloneError(errorMessage);
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
+  const handleDeleteClone = async () => {
+    setIsDeletingClone(true);
+    try {
+      await deleteClone(credential.id);
+      setActiveTab('original'); // Switch back to original tab after deleting clone
+    } catch (err) {
+      console.error('Failed to delete clone:', err);
+    } finally {
+      setIsDeletingClone(false);
+    }
+  };
+
+  // Determine if credential has a clone
+  const hasClone = !!credential.clonedAt;
 
   return (
     <div>
@@ -430,7 +473,46 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
           </div>
         )}
 
-        {/* Orbit Registration Status */}
+        {/* Tabs - Original vs Cloned Version */}
+        <div className="flex items-center gap-1 mb-4 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('original')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'original'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Original
+          </button>
+          <button
+            onClick={() => setActiveTab('cloned')}
+            disabled={!hasClone}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === 'cloned'
+                ? 'border-blue-600 text-blue-600'
+                : hasClone
+                ? 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-300 cursor-not-allowed'
+            }`}
+          >
+            Cloned Version
+            {hasClone && (
+              <span className="w-2 h-2 rounded-full bg-green-500" title="Clone exists" />
+            )}
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'cloned' && hasClone ? (
+          <ClonedVersionTab
+            credential={credential}
+            onDeleteClone={handleDeleteClone}
+            isDeleting={isDeletingClone}
+          />
+        ) : (
+          <>
+            {/* Orbit Registration Status */}
         <div className="bg-gray-50 rounded-lg p-4 mb-4">
           <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
             <svg
@@ -825,13 +907,70 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
           </div>
         )}
 
-        {/* Metadata Footer */}
-        <div className="pt-4 border-t border-gray-200">
-          <div className="text-xs text-gray-500">
-            <span>Imported {formatDateTime(credential.importedAt)}</span>
-            {credential.importedBy && <span> by {credential.importedBy}</span>}
-          </div>
-        </div>
+            {/* Metadata Footer */}
+            <div className="pt-4 border-t border-gray-200">
+              <div className="text-xs text-gray-500">
+                <span>Imported {formatDateTime(credential.importedAt)}</span>
+                {credential.importedBy && <span> by {credential.importedBy}</span>}
+              </div>
+            </div>
+
+            {/* Clone for Issuance Action */}
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <svg
+                      className="w-4 h-4 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-blue-800">Clone for Issuance</h4>
+                    <p className="text-xs text-blue-600 mt-1">
+                      {hasClone
+                        ? 'This credential has been cloned. View the cloned version tab to manage or issue credentials.'
+                        : 'Create a copy of this credential on your agent\'s ledger to issue test credentials.'}
+                    </p>
+                    {!hasClone && (
+                      <button
+                        onClick={() => setShowCloneModal(true)}
+                        className="mt-3 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v16m8-8H4"
+                          />
+                        </svg>
+                        Clone for Issuance
+                      </button>
+                    )}
+                    {hasClone && (
+                      <button
+                        onClick={() => setActiveTab('cloned')}
+                        className="mt-3 px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        View Cloned Version
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Danger Zone */}
         <div className="mt-6 pt-4 border-t border-gray-200">
@@ -921,6 +1060,20 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
             </div>
           </div>
         </div>
+      )}
+
+      {/* Clone Preview Modal */}
+      {showCloneModal && (
+        <ClonePreviewModal
+          credential={credential}
+          onClose={() => {
+            setShowCloneModal(false);
+            setCloneError(null);
+          }}
+          onConfirm={handleCloneForIssuance}
+          isLoading={isCloning}
+          error={cloneError}
+        />
       )}
     </div>
   );
