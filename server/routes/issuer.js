@@ -369,6 +369,8 @@ router.post('/offers', requireAuth, requireOrbit, async (req, res) => {
  * Uses the cloned credential definition for issuance via Orbit
  */
 router.post('/offers/catalogue', requireAuth, requireOrbit, async (req, res) => {
+  const timestamp = new Date().toISOString();
+
   try {
     const { catalogueCredentialId, credentialId, credAttributes, socketSessionId } = req.body;
 
@@ -433,7 +435,15 @@ router.post('/offers/catalogue', requireAuth, requireOrbit, async (req, res) => 
       console.error('[Issuer] Credential offer failed:', response.status, responseText);
       return res.status(response.status).json({
         error: result.message || result.error || 'Failed to create credential offer',
-        details: responseText,
+        apiDetails: {
+          message: result.message || result.error || 'Failed to create credential offer',
+          timestamp,
+          requestUrl: url,
+          requestMethod: 'POST',
+          requestPayload: payload,
+          statusCode: response.status,
+          responseBody: responseText,
+        },
       });
     }
 
@@ -468,12 +478,30 @@ router.post('/offers/catalogue', requireAuth, requireOrbit, async (req, res) => 
       longUrl: result.data?.longUrl,
       status: 'pending',
       expiresAt: offer.expiresAt,
+      // Include success API details for debugging purposes
+      apiDetails: {
+        message: 'Credential offer created successfully',
+        timestamp,
+        requestUrl: url,
+        requestMethod: 'POST',
+        requestPayload: payload,
+        statusCode: response.status,
+        responseBody: responseText,
+      },
     });
   } catch (error) {
     console.error('[Issuer] Error creating catalogue offer:', error);
     res.status(500).json({
       error: 'Failed to create credential offer',
       message: error.message,
+      apiDetails: {
+        message: error.message,
+        timestamp,
+        requestUrl: 'Unknown (error occurred before request)',
+        requestMethod: 'POST',
+        statusCode: 500,
+        responseBody: error.stack || error.message,
+      },
     });
   }
 });

@@ -12,11 +12,17 @@ import type { CatalogueCredential } from '../../../types/catalogue';
 interface CredentialSidebarProps {
   selectedCredential: CatalogueCredential | null;
   onSelectCredential: (credential: CatalogueCredential) => void;
+  /** WebSocket connection status */
+  socketConnected?: boolean;
+  /** WebSocket error message */
+  socketError?: string | null;
 }
 
 export default function CredentialSidebar({
   selectedCredential,
   onSelectCredential,
+  socketConnected = false,
+  socketError = null,
 }: CredentialSidebarProps) {
   const { credentials, fetchCredentials, isLoading, error } = useCatalogueStore();
 
@@ -109,7 +115,27 @@ export default function CredentialSidebar({
     <div className="h-full bg-white border-r border-gray-200 flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 flex-shrink-0">
-        <h2 className="text-lg font-semibold text-gray-900">Credentials</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Credentials</h2>
+          {/* Socket status indicator */}
+          <div
+            className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+              socketConnected
+                ? 'bg-green-100 text-green-700'
+                : socketError
+                ? 'bg-red-100 text-red-700'
+                : 'bg-yellow-100 text-yellow-700'
+            }`}
+            title={socketConnected ? 'Connected to Orbit' : socketError || 'Connecting...'}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                socketConnected ? 'bg-green-500' : socketError ? 'bg-red-500' : 'bg-yellow-500 animate-pulse'
+              }`}
+            />
+            {socketConnected ? 'Live' : socketError ? 'Offline' : '...'}
+          </div>
+        </div>
         <p className="text-xs text-gray-500 mt-1">
           {issuableCredentials.length} credential{issuableCredentials.length !== 1 ? 's' : ''}{' '}
           available
