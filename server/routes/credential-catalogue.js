@@ -1088,13 +1088,14 @@ const createSchemaInOrbit = async (schemaName, schemaVersion, attributes) => {
  *
  * Returns: { log: OrbitOperationLog, orbitCredDefId?: number, ledgerCredDefId?: string }
  */
-const createCredDefInOrbit = async (orbitSchemaId, tag, description) => {
+const createCredDefInOrbit = async (orbitSchemaId, tag, description, supportRevocation = false) => {
   const orbitConfig = getOrbitApiConfig('credentialMgmt');
   const timestamp = new Date().toISOString();
 
   console.log('[CredentialCatalogue] ====== ORBIT CRED DEF CREATE DEBUG ======');
   console.log('[CredentialCatalogue] Creating cred def for schema ID:', orbitSchemaId);
   console.log('[CredentialCatalogue] Tag:', tag);
+  console.log('[CredentialCatalogue] Support Revocation:', supportRevocation);
 
   if (!orbitConfig) {
     const errorMsg = 'Orbit Credential Management API not configured.';
@@ -1134,6 +1135,7 @@ const createCredDefInOrbit = async (orbitSchemaId, tag, description) => {
     schemaId: orbitSchemaId,
     tag: tag || 'default',
     description: description || 'Cloned credential for issuance',
+    supportRevocation: Boolean(supportRevocation),
   };
 
   const url = `${normalizedBaseUrl}/api/lob/${lobId}/cred-def`;
@@ -1242,11 +1244,12 @@ const createCredDefInOrbit = async (orbitSchemaId, tag, description) => {
  * - credDefTag: string (optional, defaults to "default")
  * - schemaName: string (optional, defaults to credential's original name)
  * - schemaVersion: string (optional, defaults to credential's original version)
+ * - supportRevocation: boolean (optional, defaults to false)
  */
 router.post('/:id/clone-for-issuance', async (req, res) => {
   try {
     const { id } = req.params;
-    const { credDefTag, schemaName, schemaVersion } = req.body;
+    const { credDefTag, schemaName, schemaVersion, supportRevocation } = req.body;
 
     console.log('[CredentialCatalogue] ====== CLONE FOR ISSUANCE START ======');
     console.log('[CredentialCatalogue] Credential ID:', id);
@@ -1300,7 +1303,8 @@ router.post('/:id/clone-for-issuance', async (req, res) => {
     const credDefResult = await createCredDefInOrbit(
       schemaResult.orbitSchemaId,
       credDefTag || 'default',
-      `${finalSchemaName} - cloned for issuance`
+      `${finalSchemaName} - cloned for issuance`,
+      supportRevocation
     );
 
     if (!credDefResult.log.success || !credDefResult.orbitCredDefId) {

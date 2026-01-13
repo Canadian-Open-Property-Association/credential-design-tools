@@ -75,7 +75,7 @@ interface CatalogueState {
   // Actions - Clone for Issuance
   cloneForIssuance: (
     credentialId: string,
-    options?: { schemaName?: string; schemaVersion?: string; credDefTag?: string }
+    options?: { schemaName?: string; schemaVersion?: string; credDefTag?: string; supportRevocation?: boolean }
   ) => Promise<CloneForIssuanceResponse>;
   deleteClone: (credentialId: string) => Promise<void>;
 
@@ -445,7 +445,7 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
   // Clone a credential for issuance
   cloneForIssuance: async (
     credentialId: string,
-    options?: { schemaName?: string; schemaVersion?: string; credDefTag?: string }
+    options?: { schemaName?: string; schemaVersion?: string; credDefTag?: string; supportRevocation?: boolean }
   ) => {
     // Use clone-specific error state, not the global error (which shows in credential list)
     set({ isLoading: true, cloneError: null, cloneErrorDetails: null });
@@ -454,6 +454,7 @@ export const useCatalogueStore = create<CatalogueState>((set, get) => ({
     // Build request payload with optional custom schema name/version
     const requestPayload = {
       credDefTag: options?.credDefTag || 'default',
+      supportRevocation: options?.supportRevocation ?? false,
       ...(options?.schemaName && { schemaName: options.schemaName }),
       ...(options?.schemaVersion && { schemaVersion: options.schemaVersion }),
     };

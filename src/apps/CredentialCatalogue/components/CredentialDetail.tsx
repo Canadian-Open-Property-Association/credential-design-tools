@@ -277,6 +277,7 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
     schemaName: string;
     schemaVersion: string;
     credDefTag: string;
+    supportRevocation: boolean;
   }) => {
     setIsCloning(true);
     clearCloneError();

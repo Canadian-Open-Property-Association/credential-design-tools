@@ -12,6 +12,7 @@ export interface CloneOptions {
   schemaName: string;
   schemaVersion: string;
   credDefTag: string;
+  supportRevocation: boolean;
 }
 
 interface ClonePreviewModalProps {
@@ -35,10 +36,11 @@ export default function ClonePreviewModal({
   const [schemaName, setSchemaName] = useState(credential.name);
   const [schemaVersion, setSchemaVersion] = useState(credential.version);
   const [credDefTag, setCredDefTag] = useState('default');
+  const [supportRevocation, setSupportRevocation] = useState(false);
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
   const handleConfirm = async () => {
-    await onConfirm({ schemaName, schemaVersion, credDefTag });
+    await onConfirm({ schemaName, schemaVersion, credDefTag, supportRevocation });
   };
 
   // Check if name or version has been customized
@@ -152,6 +154,24 @@ export default function ClonePreviewModal({
                   placeholder="default"
                   disabled={isLoading}
                 />
+              </div>
+
+              {/* Support Revocation - Checkbox */}
+              <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                  <span className="text-sm text-blue-600">Support Revocation</span>
+                  <span className="text-xs text-blue-500">Enable credential revocation</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={supportRevocation}
+                    onChange={(e) => setSupportRevocation(e.target.checked)}
+                    disabled={isLoading}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
 
               {/* Show notice if customized */}
