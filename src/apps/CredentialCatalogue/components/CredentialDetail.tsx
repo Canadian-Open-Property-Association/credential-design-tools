@@ -371,7 +371,6 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
                 </svg>
               </button>
             )}
-            <span className="text-sm text-gray-500">{credential.ledger}</span>
           </div>
         </div>
 
@@ -385,7 +384,7 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
                   <img
                     src={issuerLogoUrl}
                     alt={issuerEntity?.name || credential.issuerName || 'Issuer'}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain p-1"
                   />
                 ) : (
                   <svg
@@ -760,8 +759,8 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
           </div>
         </div>
 
-        {/* Source URLs */}
-        {(credential.schemaSourceUrl || credential.credDefSourceUrl) && (
+        {/* Verifiable Data Registry Information */}
+        {(credential.ledger || credential.schemaSourceUrl || credential.credDefSourceUrl) && (
           <div className="bg-gray-50 rounded-lg p-4 mb-4">
             <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-3">
               <svg
@@ -774,13 +773,20 @@ export default function CredentialDetail({ credential }: CredentialDetailProps) 
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
                 />
               </svg>
-              Source URLs
+              Verifiable Data Registry Information
             </h3>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
+              {credential.ledger && (
+                <div>
+                  <label className="text-xs text-gray-500">Ledger</label>
+                  <p className="text-sm font-medium text-gray-800 mt-1">{credential.ledger}</p>
+                </div>
+              )}
+
               {credential.schemaSourceUrl && (
                 <div>
                   <label className="text-xs text-gray-500">Schema URL</label>
