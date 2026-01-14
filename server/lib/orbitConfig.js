@@ -20,6 +20,19 @@ const ALGORITHM = 'aes-256-gcm';
 // Valid API types
 const VALID_API_TYPES = ['lob', 'registerSocket', 'connection', 'holder', 'verifier', 'issuer', 'credentialMgmt', 'chat'];
 
+// Health endpoint paths per API type (some APIs use different paths)
+const HEALTH_ENDPOINTS = {
+  registerSocket: '/health', // RegisterSocket uses /health (no /api prefix)
+  lob: '/api/health',
+  connection: '/api/health',
+  holder: '/api/health',
+  verifier: '/api/health',
+  issuer: '/api/health',
+  credentialMgmt: '/api/health',
+  chat: '/api/health',
+  default: '/api/health',
+};
+
 // Get encryption key from environment or use default for dev
 // In production, ORBIT_ENCRYPTION_KEY should be set
 function getEncryptionKey() {
@@ -559,15 +572,22 @@ export async function testApiConnection(apiType, baseUrl, lobId, apiKey) {
   }
 
   try {
-    // Try to reach the API health endpoint
-    const url = new URL('/api/health', testBaseUrl).toString();
+    // Get the correct health endpoint path for this API type
+    const healthPath = HEALTH_ENDPOINTS[apiType] || HEALTH_ENDPOINTS.default;
+    const url = new URL(healthPath, testBaseUrl).toString();
+
+    // RegisterSocket health endpoint doesn't require auth headers
+    const headers =
+      apiType === 'registerSocket'
+        ? {}
+        : {
+            'x-lob-id': testLobId,
+            ...(testApiKey && { 'api-key': testApiKey }),
+          };
 
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'x-lob-id': testLobId,
-        ...(testApiKey && { 'x-api-key': testApiKey }),
-      },
+      headers,
       signal: AbortSignal.timeout(10000), // 10 second timeout
     });
 
