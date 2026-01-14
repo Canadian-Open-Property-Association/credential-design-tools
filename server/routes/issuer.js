@@ -518,7 +518,7 @@ router.post('/offers/prepare', requireAuth, requireOrbit, async (req, res) => {
   const timestamp = new Date().toISOString();
 
   try {
-    const { credentialId, credAttributes, socketSessionId } = req.body;
+    const { credentialId, credAttributes } = req.body;
 
     if (!credentialId) {
       return res.status(400).json({
@@ -543,13 +543,14 @@ router.post('/offers/prepare', requireAuth, requireOrbit, async (req, res) => {
     const normalizedBaseUrl = issuerConfig.baseUrl.replace(/\/+$/, '');
 
     // Prepare credential offer payload per Orbit Issuer API spec
+    // Note: socketSessionId is NOT sent to Orbit - socket events are broadcast
+    // to all registered sockets for the LOB automatically
     const payload = {
       credentialId: credentialId,
       credAttributes: credAttributes,
       comment: 'Credential offer from Test Issuer',
       messageProtocol: 'AIP2_0',
       credAutoIssue: true,
-      ...(socketSessionId && { socketSessionId }),
     };
 
     // Use prepare-url-offer endpoint for QR code generation
@@ -562,7 +563,6 @@ router.post('/offers/prepare', requireAuth, requireOrbit, async (req, res) => {
     console.log('[Issuer] Preparing credential offer URL:');
     console.log('[Issuer]   URL:', url);
     console.log('[Issuer]   Credential ID:', credentialId);
-    console.log('[Issuer]   Socket Session:', socketSessionId || 'none');
     console.log('[Issuer]   Attributes:', Object.keys(credAttributes).length);
 
     const response = await fetch(url, {
