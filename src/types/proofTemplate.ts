@@ -347,7 +347,7 @@ export const DEFAULT_CLAIM: Omit<Claim, 'id'> = {
   required: true,
 };
 
-export const PROOF_TEMPLATE_CATEGORIES = [
+export const DEFAULT_PROOF_TEMPLATE_CATEGORIES = [
   { value: 'identity', label: 'Identity Verification' },
   { value: 'financial', label: 'Financial' },
   { value: 'employment', label: 'Employment' },
@@ -357,3 +357,13 @@ export const PROOF_TEMPLATE_CATEGORIES = [
   { value: 'membership', label: 'Membership' },
   { value: 'general', label: 'General' },
 ] as const;
+
+// Template type for settings management
+export interface ProofTemplateType {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+}
+
+// For backwards compatibility
+export const PROOF_TEMPLATE_CATEGORIES = DEFAULT_PROOF_TEMPLATE_CATEGORIES;

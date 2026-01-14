@@ -192,8 +192,8 @@ function App() {
           path="/apps/proofs-template-builder/*"
           element={
             <AuthGuard>
-              <PlatformShell appName="Proof Templates Builder" appIcon={ProofsTemplateBuilderIcon}>
-                <AppErrorBoundary appName="Proof Templates Builder">
+              <PlatformShell appName="Proof Template Builder" appIcon={ProofsTemplateBuilderIcon}>
+                <AppErrorBoundary appName="Proof Template Builder">
                   <ProofTemplatesApp />
                 </AppErrorBoundary>
               </PlatformShell>
