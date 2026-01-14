@@ -130,6 +130,12 @@ interface ProofTemplateState {
   error: string | null;
   selectedClaimId: string | null;
 
+  // New UI state for single-page layout
+  selectedTemplateId: string | null;
+  showSidebar: boolean;
+  showJsonPreview: boolean;
+  searchQuery: string;
+
   // Actions - API
   fetchTemplates: () => Promise<void>;
   fetchTemplate: (id: string) => Promise<void>;
@@ -159,6 +165,12 @@ interface ProofTemplateState {
   clearCurrentTemplate: () => void;
   clearError: () => void;
   setError: (error: string) => void;
+
+  // New UI actions for single-page layout
+  setSelectedTemplateId: (id: string | null) => void;
+  toggleSidebar: () => void;
+  toggleJsonPreview: () => void;
+  setSearchQuery: (query: string) => void;
 }
 
 export const useProofTemplateStore = create<ProofTemplateState>((set, get) => ({
@@ -170,6 +182,12 @@ export const useProofTemplateStore = create<ProofTemplateState>((set, get) => ({
   isSaving: false,
   error: null,
   selectedClaimId: null,
+
+  // New UI state for single-page layout
+  selectedTemplateId: null,
+  showSidebar: true,
+  showJsonPreview: false,
+  searchQuery: '',
 
   // Fetch all templates for current user
   fetchTemplates: async () => {
@@ -471,5 +489,28 @@ export const useProofTemplateStore = create<ProofTemplateState>((set, get) => ({
   // Set error
   setError: (error: string) => {
     set({ error });
+  },
+
+  // New UI actions for single-page layout
+  setSelectedTemplateId: (id: string | null) => {
+    set({ selectedTemplateId: id, selectedClaimId: null });
+    // Also fetch the template if an ID is provided
+    if (id) {
+      get().fetchTemplate(id);
+    } else {
+      get().clearCurrentTemplate();
+    }
+  },
+
+  toggleSidebar: () => {
+    set((state) => ({ showSidebar: !state.showSidebar }));
+  },
+
+  toggleJsonPreview: () => {
+    set((state) => ({ showJsonPreview: !state.showJsonPreview }));
+  },
+
+  setSearchQuery: (query: string) => {
+    set({ searchQuery: query });
   },
 }));
