@@ -44,6 +44,7 @@ import {
   updateAppsConfig,
   resetTenantConfig,
 } from './lib/tenantConfig.js';
+import { io as socketIoClient } from 'socket.io-client';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1625,18 +1626,31 @@ app.get('/api/orbit/config', requireProjectAuth, (req, res) => {
 // =============================================================================
 
 /**
- * Get socket configuration for client-side socket.io connection
- * Used by Test Issuer, Test Verifier, and other apps that need real-time events
+ * Socket Registration Endpoint
  *
- * The client will:
- * 1. Connect to socketUrl using socket.io-client
+ * Performs backend socket.io registration with Orbit RegisterSocket API.
+ * This pattern is more secure as it:
+ * 1. Keeps the API key on the server (not exposed to browser)
+ * 2. Pre-registers the socket session with Orbit
+ * 3. Returns the websocketUrl with embedded session for frontend use
+ *
+ * The backend will:
+ * 1. Connect to Orbit RegisterSocket using socket.io-client with API key auth
  * 2. Emit REGISTER_SOCKET event with lobId
- * 3. Listen for REGISTER_SOCKET_RESPONSE to get sessionId
+ * 3. Receive REGISTER_SOCKET_RESPONSE with socketId
+ * 4. Disconnect and return session info to frontend
  *
- * Returns: { socketUrl, lobId }
+ * The frontend will then:
+ * 1. Connect to the websocketUrl (with session param)
+ * 2. Re-emit REGISTER_SOCKET to maintain registration
+ * 3. Listen for ISSUANCE_RESPONSE, VERIFICATION_RESPONSE events
+ *
+ * Returns: { socketSessionId, websocketUrl, socketUrl, lobId }
  * Returns 503 if RegisterSocket API is not configured
  */
 app.post('/api/socket/register', requireProjectAuth, async (req, res) => {
+  const { appName } = req.body || {};
+
   try {
     const registerSocketConfig = getOrbitApiConfig('registerSocket');
 
@@ -1654,18 +1668,95 @@ app.post('/api/socket/register', requireProjectAuth, async (req, res) => {
       });
     }
 
-    // Log the socket config request
-    logAccess(req.session?.user?.id || 'unknown', req.session?.user?.login || 'unknown', 'socket_config', 'system');
+    const socketUrl = registerSocketConfig.baseUrl.replace(/\/+$/, '');
+    const lobId = registerSocketConfig.lobId;
+    const apiKey = registerSocketConfig.apiKey;
 
-    // Return socket URL for client-side socket.io connection
-    // Client will handle the REGISTER_SOCKET protocol
-    res.json({
-      socketUrl: registerSocketConfig.baseUrl.replace(/\/+$/, ''), // Remove trailing slash
-      lobId: registerSocketConfig.lobId,
+    // Log the socket registration request
+    logAccess(
+      req.session?.user?.id || 'unknown',
+      req.session?.user?.login || 'unknown',
+      'socket_register',
+      appName || 'system'
+    );
+
+    console.log('[Socket] Backend connecting to Orbit RegisterSocket:', socketUrl);
+
+    // Create a promise that will resolve when registration completes
+    const registrationPromise = new Promise((resolve, reject) => {
+      const socket = socketIoClient(socketUrl, {
+        auth: apiKey ? { 'api-key': apiKey } : undefined,
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+        reconnection: false, // Don't auto-reconnect for registration
+      });
+
+      // Set a timeout for the entire registration process
+      const timeoutId = setTimeout(() => {
+        console.warn('[Socket] Registration timeout after 25 seconds');
+        socket.disconnect();
+        reject(new Error('Socket registration timeout - Orbit RegisterSocket did not respond in time'));
+      }, 25000);
+
+      socket.on('connect', () => {
+        console.log('[Socket] Backend connected to RegisterSocket, socket.id:', socket.id);
+        console.log('[Socket] Emitting REGISTER_SOCKET with lobId:', lobId);
+        socket.emit('REGISTER_SOCKET', lobId);
+      });
+
+      socket.on('REGISTER_SOCKET_RESPONSE', (response) => {
+        clearTimeout(timeoutId);
+        console.log('[Socket] Got REGISTER_SOCKET_RESPONSE:', JSON.stringify(response));
+
+        if (response?.success) {
+          const socketId = response.socketId || socket.id;
+
+          // Construct websocketUrl with embedded session
+          // Replace https:// with wss:// for WebSocket protocol
+          const wsBaseUrl = socketUrl.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
+          const websocketUrl = `${wsBaseUrl}?session=${socketId}`;
+
+          // Disconnect backend socket - frontend will take over
+          socket.disconnect();
+
+          resolve({
+            socketSessionId: socketId,
+            websocketUrl: websocketUrl,
+            socketUrl: socketUrl,
+            lobId: lobId,
+          });
+        } else {
+          socket.disconnect();
+          reject(new Error('Socket registration failed: ' + JSON.stringify(response)));
+        }
+      });
+
+      socket.on('connect_error', (error) => {
+        clearTimeout(timeoutId);
+        console.error('[Socket] Backend connection error:', error.message);
+        socket.disconnect();
+        reject(new Error('Socket connection failed: ' + error.message));
+      });
+
+      socket.on('error', (error) => {
+        clearTimeout(timeoutId);
+        console.error('[Socket] Socket error:', error);
+        socket.disconnect();
+        reject(new Error('Socket error: ' + (error.message || error)));
+      });
     });
+
+    // Wait for registration to complete
+    const result = await registrationPromise;
+    console.log('[Socket] Registration successful, returning session to frontend');
+    res.json(result);
+
   } catch (error) {
-    console.error('Error getting socket config:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[Socket] Registration error:', error.message);
+    res.status(500).json({
+      error: 'Socket registration failed',
+      message: error.message,
+    });
   }
 });
 

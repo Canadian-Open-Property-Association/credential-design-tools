@@ -2,11 +2,16 @@
  * Socket Service
  *
  * Singleton service for managing socket.io connection to Orbit RegisterSocket API.
- * Provides hybrid connection model: connects on login, apps can refresh/reconnect as needed.
+ * Provides hybrid connection model: backend pre-registers, frontend connects with session.
+ *
+ * Connection Flow:
+ * 1. Backend registers with Orbit (with API key) and returns socketSessionId
+ * 2. Frontend connects with pre-registered session for event listening
+ * 3. On connect, re-emit REGISTER_SOCKET to maintain registration
  *
  * Based on Orbit's RegisterSocket documentation:
  * - Emit REGISTER_SOCKET with lobId to register session
- * - Listen for REGISTER_SOCKET_RESPONSE to get socketSessionId
+ * - Listen for REGISTER_SOCKET_RESPONSE to confirm
  * - Listen for ISSUANCE_RESPONSE events for credential status updates
  */
 
@@ -29,6 +34,7 @@ class SocketService {
   private sessionId: string | null = null;
   private lobId: string | null = null;
   private socketUrl: string | null = null;
+  private preRegisteredSession: string | null = null;
   private eventLog: SocketEventLog[] = [];
   private maxLogSize = 100;
   private eventHandlers: Set<SocketEventHandler> = new Set();
@@ -37,12 +43,38 @@ class SocketService {
 
   /**
    * Connect to Orbit RegisterSocket service
+   *
+   * @param socketUrl - The base socket URL (or full URL with ?session= query param)
+   * @param lobId - The LOB ID for registration
+   * @param preRegisteredSessionId - Optional session ID from backend registration
    */
-  async connect(socketUrl: string, lobId: string): Promise<string> {
-    this.socketUrl = socketUrl;
+  async connect(socketUrl: string, lobId: string, preRegisteredSessionId?: string): Promise<string> {
+    // Parse session from URL if provided (e.g., wss://host?session=xxx)
+    let baseSocketUrl = socketUrl;
+    let sessionFromUrl: string | null = null;
+
+    try {
+      // Check if URL has session query param
+      if (socketUrl.includes('?session=')) {
+        const url = new URL(socketUrl.replace(/^wss:\/\//, 'https://').replace(/^ws:\/\//, 'http://'));
+        sessionFromUrl = url.searchParams.get('session');
+        baseSocketUrl = socketUrl.split('?')[0];
+      }
+    } catch {
+      // Use socketUrl as-is if parsing fails
+    }
+
+    // Use pre-registered session (from param or URL)
+    this.preRegisteredSession = preRegisteredSessionId || sessionFromUrl;
+    this.socketUrl = baseSocketUrl;
     this.lobId = lobId;
 
-    // Reuse existing live connection
+    console.log('[SocketService] 1. Initializing connection');
+    console.log('[SocketService]    Socket URL:', baseSocketUrl);
+    console.log('[SocketService]    LOB ID:', lobId);
+    console.log('[SocketService]    Pre-registered session:', this.preRegisteredSession || 'none');
+
+    // Reuse existing live connection if session matches
     if (this.socket?.connected && this.sessionId) {
       console.log('[SocketService] Reusing existing connection:', this.sessionId);
       return this.sessionId;
@@ -58,39 +90,74 @@ class SocketService {
 
     return new Promise((resolve, reject) => {
       try {
-        console.log('[SocketService] Connecting to:', socketUrl);
+        console.log('[SocketService] 2. Creating socket.io connection');
 
-        this.socket = io(socketUrl, {
-          transports: ['websocket'],
-          timeout: 15000,
+        // Build connection options
+        const socketOptions: Parameters<typeof io>[1] = {
+          transports: ['websocket', 'polling'], // Add polling fallback
+          timeout: 30000, // Increase timeout
           reconnection: true,
           reconnectionAttempts: Infinity,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-        });
+          reconnectionDelay: 2000,
+          reconnectionDelayMax: 10000,
+        };
+
+        // Add session query param if we have a pre-registered session
+        if (this.preRegisteredSession) {
+          socketOptions.query = { session: this.preRegisteredSession };
+        }
+
+        this.socket = io(baseSocketUrl, socketOptions);
 
         this.socket.on('connect', () => {
-          console.log('[SocketService] Socket connected, id:', this.socket?.id);
-          this.logEvent('connect', { socketId: this.socket?.id });
+          console.log('[SocketService] 3. Socket transport connected, socket.id:', this.socket?.id);
+          this.logEvent('connect', { socketId: this.socket?.id, preRegisteredSession: this.preRegisteredSession });
 
-          // Register socket with LOB ID
-          console.log('[SocketService] Emitting REGISTER_SOCKET with lobId:', lobId);
+          // If we have a pre-registered session, use it immediately
+          if (this.preRegisteredSession) {
+            this.sessionId = this.preRegisteredSession;
+            console.log('[SocketService] 4. Using pre-registered session:', this.sessionId);
+          }
+
+          // Always emit REGISTER_SOCKET to maintain/refresh registration
+          console.log('[SocketService] 5. Emitting REGISTER_SOCKET with lobId:', lobId);
           this.socket?.emit('REGISTER_SOCKET', lobId);
+
+          // If we had a pre-registered session, resolve immediately
+          // We don't need to wait for REGISTER_SOCKET_RESPONSE
+          if (this.preRegisteredSession) {
+            this.setStatus('connected');
+            resolve(this.sessionId || '');
+          }
         });
 
         this.socket.on('REGISTER_SOCKET_RESPONSE', (response: unknown) => {
-          console.log('[SocketService] REGISTER_SOCKET_RESPONSE:', response);
+          console.log('[SocketService] 6. REGISTER_SOCKET_RESPONSE:', JSON.stringify(response));
           this.logEvent('REGISTER_SOCKET_RESPONSE', response);
 
           const resp = response as { success?: boolean; socketId?: string };
           if (resp?.success) {
-            this.sessionId = resp.socketId || this.socket?.id || null;
+            // Update session ID if Orbit returned a new one
+            const newSessionId = resp.socketId || this.socket?.id || null;
+            if (!this.sessionId) {
+              this.sessionId = newSessionId;
+            }
             this.setStatus('connected');
-            console.log('[SocketService] Registered with sessionId:', this.sessionId);
-            resolve(this.sessionId || '');
+            console.log('[SocketService] Registration confirmed, sessionId:', this.sessionId);
+
+            // Only resolve here if we didn't have a pre-registered session
+            if (!this.preRegisteredSession) {
+              resolve(this.sessionId || '');
+            }
           } else {
-            this.setStatus('error');
-            reject(new Error('Socket registration failed'));
+            // Only reject if we don't have a pre-registered session
+            if (!this.preRegisteredSession) {
+              this.setStatus('error');
+              reject(new Error('Socket registration failed'));
+            } else {
+              // Log warning but keep connection - pre-registered session may still work
+              console.warn('[SocketService] REGISTER_SOCKET_RESPONSE not successful, but using pre-registered session');
+            }
           }
         });
 
@@ -101,7 +168,7 @@ class SocketService {
         });
 
         this.socket.on('connect_error', (error: Error) => {
-          console.error('[SocketService] Connection error:', error);
+          console.error('[SocketService] Connection error:', error.message);
           this.logEvent('connect_error', { message: error.message });
           this.setStatus('error');
           reject(error);
@@ -123,7 +190,7 @@ class SocketService {
         });
 
         this.socket.on('reconnect_error', (err: Error) => {
-          console.warn('[SocketService] Reconnect error:', err);
+          console.warn('[SocketService] Reconnect error:', err.message);
           this.logEvent('reconnect_error', { message: err.message });
         });
 
@@ -136,14 +203,14 @@ class SocketService {
         // Set up event listeners for credential and verification events
         this.setupEventListeners();
 
-        // Timeout if registration doesn't complete
+        // Timeout if registration doesn't complete (only for non-pre-registered)
         setTimeout(() => {
-          if (this.connectionStatus === 'connecting') {
+          if (this.connectionStatus === 'connecting' && !this.preRegisteredSession) {
             console.warn('[SocketService] Registration timeout');
             this.setStatus('error');
             reject(new Error('Socket registration timeout'));
           }
-        }, 20000);
+        }, 30000);
       } catch (error) {
         this.setStatus('error');
         reject(error);

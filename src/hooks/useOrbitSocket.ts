@@ -104,13 +104,23 @@ export function useOrbitSocket({
   onEventRef.current = onEvent;
 
   /**
-   * Get socket configuration from server
+   * Get socket configuration from server (backend does registration with API key)
+   *
+   * Returns:
+   * - socketSessionId: Pre-registered session ID from Orbit
+   * - websocketUrl: Full URL with ?session= param for frontend connection
+   * - socketUrl: Base socket URL
+   * - lobId: LOB ID for re-registration
    */
   const getSocketConfig = useCallback(async (): Promise<{
+    socketSessionId: string;
+    websocketUrl: string;
     socketUrl: string;
     lobId: string;
   } | null> => {
     try {
+      console.log(`[${appName}] Requesting socket registration from backend...`);
+
       const response = await fetch(`${API_BASE}/api/socket/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,16 +130,24 @@ export function useOrbitSocket({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to get socket config: ${response.status}`);
+        throw new Error(errorData.message || errorData.error || `Failed to register socket: ${response.status}`);
       }
 
       const data = await response.json();
 
-      if (!data.socketUrl) {
-        throw new Error('Invalid response: missing socketUrl');
+      // Backend now returns pre-registered session
+      if (!data.socketSessionId || !data.websocketUrl) {
+        throw new Error('Invalid response: missing socketSessionId or websocketUrl');
       }
 
+      console.log(`[${appName}] Backend registration successful:`, {
+        socketSessionId: data.socketSessionId,
+        websocketUrl: data.websocketUrl,
+      });
+
       return {
+        socketSessionId: data.socketSessionId,
+        websocketUrl: data.websocketUrl,
         socketUrl: data.socketUrl,
         lobId: data.lobId,
       };
@@ -144,7 +162,7 @@ export function useOrbitSocket({
   }, [appName]);
 
   /**
-   * Initialize socket connection
+   * Initialize socket connection using pre-registered session from backend
    */
   const initSocket = useCallback(async () => {
     // Check if already connected and reuse
@@ -163,14 +181,21 @@ export function useOrbitSocket({
 
     setState((s) => ({ ...s, isRegistering: true, error: null }));
 
+    // Backend registers with Orbit and returns pre-registered session
     const config = await getSocketConfig();
     if (!config || !mountedRef.current) {
       return;
     }
 
     try {
-      console.log(`[${appName}] Connecting to socket...`);
-      const sessionId = await socketService.connect(config.socketUrl, config.lobId);
+      console.log(`[${appName}] Connecting to socket with pre-registered session...`);
+
+      // Connect using websocketUrl (includes ?session=xxx) and pass pre-registered session ID
+      const sessionId = await socketService.connect(
+        config.websocketUrl,
+        config.lobId,
+        config.socketSessionId
+      );
 
       if (mountedRef.current) {
         setState({
